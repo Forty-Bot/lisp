@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "lisp.h"
-
 #include <editline/readline.h>
+
 #include "mpc.h"
+#include "lisp.h"
 
 int main(int argc, char** argv){
 
@@ -25,7 +25,7 @@ int main(int argc, char** argv){
 	", Number, Operator, Expr, Lisp);
 
 	//Version and exit info
-	puts("Lisp Version 0.0.1	");
+	puts("Lisp Version 0.0.1");
 	puts("Ctrl-C to exit\n");
 
 	while(1) {
@@ -38,15 +38,15 @@ int main(int argc, char** argv){
 
 		mpc_result_t r;
 		if(!(mpc_parse("<stdin>", input, Lisp, &r))){
-			//Failure
+			//Failure to parse the input
 			mpc_err_print(r.error);
 			mpc_err_delete(r.error);
 			free(input);
 			continue;
 		}
 
-		long result = eval(r.output);
-		printf("%li\n", result);
+		lval result = eval(r.output);
+		lval_println(result);
 		mpc_ast_delete(r.output);
 
 		free(input);
@@ -58,16 +58,21 @@ int main(int argc, char** argv){
 
 }
 
-long eval(mpc_ast_t* t){
+lval eval(mpc_ast_t* t){
 
 		//Return numbers
-		if(strstr(t->tag, "number")) return atoi(t->contents);
+		if(strstr(t->tag, "number")) {
 
+			errno = 0;
+			int number = strtol(t->contents, NULL, 10);  //Base 10
+			return errno != ERANGE ? lval_num(number) : lval_err(LERR_BAD_NUM);
+
+		}
 		//Get the operator
 		char* op = t->children[1]->contents;
 
 		//Evaluate the first expr
-		long result = eval(t->children[2]);
+		lval result = eval(t->children[2]);
 
 		int i;
 		//Loop until we hit a )
@@ -80,21 +85,24 @@ long eval(mpc_ast_t* t){
 		return result;
 }
 
-long eval_op(char* op, long a, long b){
+lval eval_op(char* op, lval a, lval b){
+
+	//If there is an error, pass it up the chain
+	if(a.type == LVAL_ERR) return a;
+	if(b.type == LVAL_ERR) return b;
 
 	//This only works with operators in C, but it does cut down on the repetition
-	#define ADD_OP(operator) if(strcmp(op, #operator) == 0) return a operator b;
+	#define ADD_OP(operator) if(strcmp(op, #operator) == 0) return lval_num(a.r.num operator b.r.num);
 
 	ADD_OP(+)
 	ADD_OP(-)
 	ADD_OP(*)
-	ADD_OP(/)
 	ADD_OP(%)
 
 	#undef ADD_OP
 
-	//Function should take two longs as arguments
-	#define ADD_OP(operator, function) if(strcmp(op, #operator) == 0) return function(a, b);
+	//These functions should take two longs as arguments
+	#define ADD_OP(operator, function) if(strcmp(op, #operator) == 0) return lval_num(function(a.r.num, b.r.num));
 
 	ADD_OP(^, pow)
 	ADD_OP(min, fmin)
@@ -102,6 +110,60 @@ long eval_op(char* op, long a, long b){
 
 	#undef ADD_OP
 
-	return 0;
+	//These functions return lvals
+	#define ADD_OP(operator, function) if(strcmp(op, #operator) == 0) return function(a.r.num, b.r.num);
 
+	ADD_OP(/, divide)
+
+	#undef ADD_OP
+
+	return lval_err(LERR_BAD_OP);
+
+}
+
+lval divide(long a, long b){
+
+	return b == 0 ? lval_err(LERR_DIV_0) : lval_num(a / b);
+
+}
+
+//Create an lval from a given error
+lval lval_err(int err){
+
+	lval v;
+	v.type = LVAL_ERR;
+	v.r.err = err;
+	return v;
+
+}
+
+//Create an lval from a given number
+lval lval_num(long num){
+
+	lval v;
+	v.type = LVAL_NUM;
+	v.r.num = num;
+	return v;
+
+}
+
+//Print an lval to stddout
+void lval_print(lval v){
+
+		switch(v.type){
+			case(LVAL_NUM):
+			printf("%li", v.r.num); break;
+
+			case(LVAL_ERR):
+			#define PRINT_E(error, message) if (v.r.err == (error)) { printf(message); }
+			PRINT_E(LERR_BAD_NUM, "Error: Invalid Number")
+			else PRINT_E(LERR_BAD_OP, "Error: Invalid Operator")
+			else PRINT_E(LERR_DIV_0, "Error: Divide by Zero")
+			#undef PRINT_E
+			break;
+		}
+}
+
+void lval_println(lval v){
+	lval_print(v); putchar('\n');
 }
