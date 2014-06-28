@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
 
 #include <editline/readline.h>
 
@@ -13,6 +14,7 @@ int main(int argc, char** argv){
 	mpc_parser_t* Number	= mpc_new("number");
 	mpc_parser_t* Symbol	= mpc_new("symbol");
 	mpc_parser_t* Sexpr		= mpc_new("sexpr");
+	mpc_parser_t* Qexpr		= mpc_new("qexpr");
 	mpc_parser_t* Expr		= mpc_new("expr");
 	mpc_parser_t* Lisp		= mpc_new("lisp");
 
@@ -20,11 +22,13 @@ int main(int argc, char** argv){
 	"\
 	number		: /-?[0-9]+/ ;							\
 	symbol		: '+' | '-' | '*' | '/' | '%' | '^' |	\
-				\"min\" | \"max\";						\
+				\"min\" | \"max\" | \"list\" | \"head\" | \
+				\"tail\" | \"join\" | \"eval\" ;		\
+	qexpr		: '{' <expr>* '}' ;						\
 	sexpr		: '(' <expr>* ')' ;						\
-	expr		: <number> | <symbol> | <sexpr> ;		\
+	expr		: <number> | <symbol> | <sexpr> | <qexpr>;	\
 	lisp		: /^/ <expr>* /$/ ;						\
-	", Number, Symbol, Sexpr, Expr, Lisp);
+	", Number, Symbol, Qexpr, Sexpr, Expr, Lisp);
 
 	//Version and exit info
 	puts("Lisp Version 0.0.4");
@@ -56,7 +60,7 @@ int main(int argc, char** argv){
 
 	}
 
-	mpc_cleanup(5, Number, Symbol, Sexpr, Expr, Lisp);
+	mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Lisp);
 	return 0;
 
 }
@@ -161,11 +165,21 @@ lval* lval_sym(char* message){
 
 }
 
-//And empty sexp
-lval* lval_sexp(void){
+//An empty sexp
+lval* lval_sexp(){
 
 	lval* v = malloc(sizeof(lval));
 	v->type = LVAL_SEXPR;
+	v->count = 0;
+	v->cell = NULL;
+	return v;
+
+}
+
+lval* lval_qexpr() {
+
+	lval* v = malloc(sizeof(lval));
+	v->type = LVAL_QEXPR;
 	v->count = 0;
 	v->cell = NULL;
 	return v;
@@ -179,56 +193,13 @@ void lval_del(lval* v){
 		case(LVAL_ERR): free(v->err); break;
 		case(LVAL_SYM): free(v->sym); break;
 		case(LVAL_SEXPR):
+		case(LVAL_QEXPR):
 			for(int i = 0; i < v->count; i++)  //Free the array of lvals
 				lval_del(v->cell[i]);
 			free(v->cell);
 			break;
 	}
 	free(v);
-}
-//Print an lval to stddout
-/*void lval_print(lval v){
-
-		switch(v.type){
-			case(LVAL_NUM):
-				printf("%li", v.r.num); break;
-
-			case(LVAL_ERR):
-				#define PRINT_E(error, message) if (v.r.err == (error)) { printf(message); }
-				PRINT_E(LERR_BAD_NUM, "Error: Invalid Number")
-				else PRINT_E(LERR_BAD_OP, "Error: Invalid Operator")
-				else PRINT_E(LERR_DIV_0, "Error: Divide by Zero")
-				#undef PRINT_E
-			break;
-		}
-}*/
-
-void lval_print(lval* v){
-
-	switch(v->type){
-		case(LVAL_NUM): printf("%li", v->num); break;
-		case(LVAL_ERR): printf("Error: %s", v->err); break;
-		case(LVAL_SYM): printf("%s", v->sym); break;
-		case(LVAL_SEXPR): lval_expr_print(v, '(', ')'); break;
-	}
-
-}
-
-void lval_expr_print(lval* v, char open, char close){
-
-	putchar(open);
-	for(int i = 0; i < v->count; i++){
-		//Print the value
-		lval_print(v->cell[i]);
-		//Only put a space if it's not last
-		if(i != (v->count - 1)) putchar(' ');
-	}
-	putchar(close);
-
-}
-
-void lval_println(lval* v){
-	lval_print(v); putchar('\n');
 }
 
 //Append element to v
@@ -238,41 +209,6 @@ lval* lval_append(lval* v, lval* element){
 		v->cell = realloc(v->cell, sizeof(lval*) * v->count);
 		v->cell[v->count - 1] = element;
 		return v;
-
-}
-
-//Read a number from an abstract syntax tree
-lval* lval_read_num(mpc_ast_t* t){
-
-	errno = 0;
-	long num = strtol(t->contents, NULL, 10);  //Base 10
-	return errno != ERANGE ? lval_num(num) : lval_err("invalid number");
-
-}
-
-lval* lval_read(mpc_ast_t* t){
-
-	//Return if it's a symbol or number
-	if(strstr(t->tag, "number")) return lval_read_num(t);
-	if(strstr(t->tag, "symbol")) return lval_sym(t->contents);
-
-	//It should be an sexpr or the root
-	lval* tree = NULL;
-	//Check to be sure
-	if((strcmp(t->tag, ">") == 0) || strstr(t->tag, "sexpr")) tree = lval_sexp();
-
-	for(int i = 0; i < t->children_num; i++){
-		#define IF_NOT(string) if(strcmp(t->children[i]->contents, string) == 0) continue;
-		IF_NOT("(")
-		IF_NOT(")")
-		IF_NOT("{")
-		IF_NOT("}")
-		#undef IF_NOT
-		if(strcmp(t->children[i]->tag, "regex") == 0) continue;
-		tree = lval_append(tree, lval_read(t->children[i]));
-	}
-
-	return tree;
 
 }
 
@@ -299,6 +235,98 @@ lval* lval_take(lval* v, int index){
 	return pop;
 }
 
+lval* lval_join(lval* x, lval* y) {
+
+	//Add all the cells in y to x
+	while(y->count) x = lval_append(x, lval_pop(y, 0));
+
+	lval_del(y);
+	return x;
+
+}
+
+//Print an lval to stddout
+/*void lval_print(lval v){
+
+		switch(v.type){
+			case(LVAL_NUM):
+				printf("%li", v.r.num); break;
+
+			case(LVAL_ERR):
+				#define PRINT_E(error, message) if (v.r.err == (error)) { printf(message); }
+				PRINT_E(LERR_BAD_NUM, "Error: Invalid Number")
+				else PRINT_E(LERR_BAD_OP, "Error: Invalid Operator")
+				else PRINT_E(LERR_DIV_0, "Error: Divide by Zero")
+				#undef PRINT_E
+			break;
+		}
+}*/
+
+void lval_print(lval* v){
+
+	switch(v->type){
+		case(LVAL_NUM): printf("%li", v->num); break;
+		case(LVAL_ERR): printf("Error: %s", v->err); break;
+		case(LVAL_SYM): printf("%s", v->sym); break;
+		case(LVAL_SEXPR): lval_expr_print(v, '(', ')'); break;
+		case(LVAL_QEXPR): lval_expr_print(v, '{', '}'); break;
+	}
+
+}
+
+void lval_expr_print(lval* v, char open, char close){
+
+	putchar(open);
+	for(int i = 0; i < v->count; i++){
+		//Print the value
+		lval_print(v->cell[i]);
+		//Only put a space if it's not last
+		if(i != (v->count - 1)) putchar(' ');
+	}
+	putchar(close);
+
+}
+
+void lval_println(lval* v){
+	lval_print(v); putchar('\n');
+}
+
+//Read a number from an abstract syntax tree
+lval* lval_read_num(mpc_ast_t* t){
+
+	errno = 0;
+	long num = strtol(t->contents, NULL, 10);  //Base 10
+	return errno != ERANGE ? lval_num(num) : lval_err("invalid number");
+
+}
+
+lval* lval_read(mpc_ast_t* t){
+
+	//Return if it's a symbol or number
+	if(strstr(t->tag, "number")) return lval_read_num(t);
+	if(strstr(t->tag, "symbol")) return lval_sym(t->contents);
+
+	//It should be an sexpr or the root
+	lval* tree = NULL;
+	//Check to be sure
+	if((strcmp(t->tag, ">") == 0) || strstr(t->tag, "sexpr")) tree = lval_sexp();
+	if(strstr(t->tag, "qexpr")) tree = lval_qexpr();
+
+	for(int i = 0; i < t->children_num; i++){
+		#define IF_NOT(string) if(strcmp(t->children[i]->contents, string) == 0) continue;
+		IF_NOT("(")
+		IF_NOT(")")
+		IF_NOT("{")
+		IF_NOT("}")
+		#undef IF_NOT
+		if(strcmp(t->children[i]->tag, "regex") == 0) continue;
+		tree = lval_append(tree, lval_read(t->children[i]));
+	}
+
+	return tree;
+
+}
+
 //Evaluate an sexpr
 lval* lval_eval_sexpr(lval* v){
 
@@ -320,7 +348,7 @@ lval* lval_eval_sexpr(lval* v){
 		return lval_err("Sexpr does not start with a symbol");
 	}
 
-	lval* result = builtin_op(v, symbol->sym);
+	lval* result = builtin(v, symbol->sym);
 	lval_del(symbol);  //builtin_op deletes v
 	return result;
 
@@ -339,7 +367,7 @@ lval* builtin_op(lval* args, char* op){
 	for(int i = 0; i < args->count; i++){
 		if(args->cell[i]->type != LVAL_NUM){
 			lval_del(args);  //Also deletes op
-			return lval_err("Must have the numbers");
+			return lval_err("Arguments must be numbers");
 		}
 	}
 
@@ -351,7 +379,7 @@ lval* builtin_op(lval* args, char* op){
 		lval* second = lval_pop(args, 0);
 
 		//Helper macro for C operators
-		#define ADD_OP(operator) if(strcmp(op, #operator) == 0) first->num = first->num operator second->num
+		#define ADD_OP(operator) do{ if(strcmp(op, #operator) == 0) first->num = first->num operator second->num; } while(false)
 		ADD_OP(+);
 		ADD_OP(-);
 		ADD_OP(*);
@@ -359,12 +387,13 @@ lval* builtin_op(lval* args, char* op){
 		#undef ADD_OP
 
 		//Helper macro for functions in the format "long func(long, long)"
-		#define ADD_OP(operator, function) if(strcmp(op, #operator) == 0) first->num = function(first->num, second->num)
+		#define ADD_OP(operator, function) do{ if(strcmp(op, #operator) == 0) first->num = function(first->num, second->num); } while(false)
 		ADD_OP(^, pow);
 		ADD_OP(min, fmin);
 		ADD_OP(max, fmax);
 		#undef ADD_OP
 
+		//And divide gets its own thing
 		if(strcmp(op, "/") == 0) {
 			if(second->num == 0) {
 				lval_del(first);
@@ -381,5 +410,97 @@ lval* builtin_op(lval* args, char* op){
 
 	lval_del(args);
 	return first;
+
+}
+
+//A helper assertion function
+#define LASSERT(args, cond, error) do { if(cond) { lval_del(args); return lval_err(error); } } while(false)
+
+//Return the first element in a list
+lval* builtin_head(lval* args) {
+
+	LASSERT(args, (args->count != 1), "Function \"head\" passed too many arguments");
+	LASSERT(args, (args->cell[0]->type != LVAL_QEXPR), "Function \"head\" passed wrong type");
+	LASSERT(args, (args->cell[0]->count == 0), "Function \"head\" passed {}");
+
+	lval* v;
+	for(v = lval_take(args, 0);
+		v->count > 1;
+		lval_del(lval_pop(v, 1)));  //Delete everything until we have 1 argument left
+
+	return v;
+
+}
+
+//Return the last elements of the list
+lval* builtin_tail(lval* args) {
+
+	LASSERT(args, (args->count != 1), "Function \"tail\" passed too many arguments");
+	LASSERT(args, (args->cell[0]->type != LVAL_QEXPR), "Function \"tail\" passed wrong type");
+	LASSERT(args, (args->cell[0]->count == 0), "Function \"tail\" passed {}");
+
+	lval* v = lval_take(args, 0);
+	lval_del(lval_pop(v, 0));
+	return v;
+
+}
+
+//"Convert" an sexpr to a qexpr
+lval* builtin_list(lval* args) {
+
+	args->type = LVAL_QEXPR;
+	return args;
+
+}
+
+//Evaluate a qexpr
+lval* builtin_eval(lval* args) {
+
+	LASSERT(args, (args->count != 1), "Function \"eval\" passed too many arguments");
+	LASSERT(args, (args->cell[0]->type != LVAL_QEXPR), "Function \"eval\" passed wrong type");
+
+	lval* v = lval_take(args, 0);
+	v->type = LVAL_SEXPR;
+	return lval_eval(v);
+
+}
+
+lval* builtin_join(lval* args) {
+
+	for(int i = 0; i < args->count; i++) {
+		LASSERT(args, (args->cell[i]->type == LVAL_QEXPR), "Function \"join\" passed incorrect type");
+	}
+
+	lval* x;
+	for(x = lval_pop(args, 0); args->count; lval_join(x, lval_pop(args, 0)));  //Join the arguments together
+
+	lval_del(args);
+	return x;
+
+}
+#undef LASSERT
+
+lval* builtin(lval* args, char* func_name) {
+
+	//Helper macro for builtin_funcs
+	#define ADD_FUNC(function) do{ if(strcmp(#function, func_name) == 0) return builtin_##function(args); } while(false)
+	ADD_FUNC(list);
+	ADD_FUNC(head);
+	ADD_FUNC(tail);
+	ADD_FUNC(join);
+	ADD_FUNC(eval);
+	#undef ADD_FUNC
+
+	//Helper macro for math.h functions (implemented in builtin_op)
+	#define ADD_FUNC(operator) do{ if(strcmp(#operator, func_name) == 0) return builtin_op(args, func_name); } while(false)
+	ADD_FUNC(^);
+	ADD_FUNC(min);
+	ADD_FUNC(max);
+	#undef ADD_FUNC
+
+	if(strstr("+-/*%", func_name)) return builtin_op(args, func_name);
+
+	lval_del(args);
+	return lval_err("Unknown function");
 
 }
