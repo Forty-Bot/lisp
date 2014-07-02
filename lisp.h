@@ -82,7 +82,7 @@ lenv* lenv_new(int);
 void lenv_del(lenv*);
 void lenv_put(lenv*, lval*, lval*);
 lval* lenv_get(lenv*, lval*);
-lenv* lenv_resize(lenv*, int);
+void lenv_resize(lenv*, int);
 void lenv_add_builtin(lenv*, char*, lbuiltin);
 void lenv_add_builtins(lenv*);
 

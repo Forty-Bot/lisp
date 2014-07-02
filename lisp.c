@@ -29,12 +29,12 @@ int main(int argc, char** argv){
 	lisp		: /^/ <expr>* /$/ ;						\
 	", Number, Symbol, Qexpr, Sexpr, Expr, Lisp);
 
+	lenv* e = lenv_new(LENV_INIT);
+	lenv_add_builtins(e);
+
 	//Version and exit info
 	puts("Lisp Version 0.0.4");
 	puts("Ctrl-C to exit\n");
-
-	lenv* e = lenv_new(LENV_INIT);
-	lenv_add_builtins(e);
 
 	while(1) {
 
@@ -571,6 +571,7 @@ ADD_BUILTIN(sub, -)
 ADD_BUILTIN(mul, *)
 ADD_BUILTIN(div, /)
 ADD_BUILTIN(mod, %)
+ADD_BUILTIN(pow, ^)
 ADD_BUILTIN(min, min)
 ADD_BUILTIN(max, max)
 #undef ADD_BUILTIN
@@ -583,6 +584,7 @@ void lenv_add_builtins(lenv* e) {
 	ADD_BUILTIN(*,mul);
 	ADD_BUILTIN(/,div);
 	ADD_BUILTIN(%,mod);
+	ADD_BUILTIN(^,pow)
 	ADD_BUILTIN(min,min);
 	ADD_BUILTIN(max,max);
 	ADD_BUILTIN(list,list);
@@ -664,8 +666,11 @@ lenv* lenv_new(int size) {
 void lenv_del(lenv* e) {
 
 	for(int i = 0; i < e->max; i++) {  //Delete the lentries in e->table
-		free(e->table[i].sym);
-		lval_del(e->table[i].v);
+		//printf("e->table[%d].v = %p\n", i, e->table[i].v);
+		if(e->table[i].v != NULL) {
+			free(e->table[i].sym);
+			lval_del(e->table[i].v);
+		}
 	}
 	free(e->table);
 	free(e);
@@ -673,9 +678,10 @@ void lenv_del(lenv* e) {
 }
 
 //Takes an lenv, a symbol k, and a value v
+//You must free k and v
 void lenv_put(lenv* e, lval* k, lval* v){
 
-	if(((float) e->count)/((float) e->max) > 0.75f) e = lenv_resize(e, e->max * 2);  //Resize if the table is full
+	if(((float) e->count)/((float) e->max) > 0.75f) lenv_resize(e, e->max * 2);  //Resize if the table is full
 
 	int hash = (int) (djb2(k->sym) % e->max);  //Main hash
 	int dhash = (int) (9 - 2 * (sdbm(k->sym) % 5));  //The jump is from 1-9 odds
@@ -688,7 +694,7 @@ void lenv_put(lenv* e, lval* k, lval* v){
 		lval_del(e->table[hash].v);
 	}
 
-	e->table[hash].sym = malloc(strlen(k->sym));  //And put in the new
+	e->table[hash].sym = malloc(strlen(k->sym) + 1);  //And put in the new
 	strcpy(e->table[hash].sym, k->sym);
 	e->table[hash].v = lval_copy(v);
 
@@ -708,15 +714,30 @@ lval* lenv_get(lenv* e, lval* k) {
 	else return lval_copy(e->table[hash].v);
 }
 
-lenv* lenv_resize(lenv* e, int size) {
+void lenv_resize(lenv* e, int size) {
 
-	lenv* x = lenv_new(size);
+	int tmp_max = e->max;
+	lentry* tmp = malloc(sizeof(lentry) * tmp_max);  //Stick e->table in a tmp array while we make a new table
+	memcpy(tmp, e->table, sizeof(lentry) * tmp_max);
 
-	for(int i = 0; i < e->max; i++)
-		if(e->table[i].sym != NULL) lenv_put(x, lval_sym(e->table[i].sym), e->table[i].v);
+	e->table = malloc(sizeof(lentry) * size);  //Init the new table
+	e->count = 0;
+	e->max = size;
+	for(int i = 0; i < e->max; i++) {
+		e->table[i].sym = NULL;
+		e->table[i].v = NULL;
+	}
 
-	lenv_del(e);
-	return x;
+	for(int i = 0; i < tmp_max; i++)
+		if(tmp[i].sym != NULL) {
+			lval* k = lval_sym(tmp[i].sym);
+			lval* v = lval_copy(tmp[i].v);
+			lenv_put(e, lval_sym(tmp[i].sym), lval_copy(tmp[i].v));
+			lval_del(k);
+			lval_del(v);
+		}
+
+	free(tmp);
 
 }
 
