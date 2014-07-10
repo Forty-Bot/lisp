@@ -11,15 +11,16 @@ typedef struct lenv lenv;
 typedef lval*(*lbuiltin)(lenv*, lval*);
 
 struct lval{
-	enum { LVAL_NUM, LVAL_ERR, LVAL_SYM, LVAL_SEXPR, LVAL_QEXPR, LVAL_FUNC} type;
+	enum ltype { LVAL_NUM, LVAL_ERR, LVAL_SYM, LVAL_SEXPR, LVAL_QEXPR, LVAL_FUNC} type;
 
 	long num;
-
 	char* err;
-
 	char* sym;
 
-	lbuiltin func;
+	lbuiltin builtin;
+	lenv* env;
+	lval* formals;
+	lval* body;
 
 	int count;
 	struct lval** cell;
@@ -30,8 +31,9 @@ typedef struct lentry{
 	lval* v;
 } lentry;
 
-//lenvs are a doubly hashed hashtable
+//lenvs are heiarchal doubly hashed hashtables
 struct lenv{
+	lenv* par;
 	int max;
 	int count;
 	lentry* table;
@@ -42,6 +44,8 @@ struct lenv{
  * This means our double hash needs to be odd, but we can make that work
  */
 #define LENV_INIT 32
+//Use a smaller value for local scope
+#define LENV_LOCAL_INIT 8
 
 //enum { LERR_DIV_0, LERR_BAD_OP, LERR_BAD_NUM};
 
@@ -68,6 +72,8 @@ lval* lval_read_num(mpc_ast_t*);
 lval* lval_eval(lenv*, lval*);
 lval* lval_eval_sexpr(lenv*, lval*);
 
+lval* lval_call(lenv*, lval*, lval*);
+
 char* ltype_name(int);
 
 lval* builtin_head(lenv*, lval*);
@@ -75,12 +81,17 @@ lval* builtin_tail(lenv*, lval*);
 lval* builtin_list(lenv*, lval*);
 lval* builtin_eval(lenv*, lval*);
 lval* builtin_join(lenv*, lval*);
+lval* builtin_lambda(lenv*, lval*);
+lval* builtin_def(lenv*, lval*);
+lval* builtin_put(lenv*, lval*);
 lval* builtin_op(lenv*, lval*, char*);
-lval* builtin(lval*, char*);
+//lval* builtin(lval*, char*);
 
 lenv* lenv_new(int);
 void lenv_del(lenv*);
+lenv* lenv_copy(lenv*);
 void lenv_put(lenv*, lval*, lval*);
+void lenv_def(lenv*, lval*, lval*);
 lval* lenv_get(lenv*, lval*);
 void lenv_resize(lenv*, int);
 void lenv_add_builtin(lenv*, char*, lbuiltin);
