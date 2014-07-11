@@ -39,7 +39,7 @@ int main(int argc, char** argv){
 	boolean		: \"true\" | \"false\" ;				\
 	string	: /\"(\\\\.|[^\"])*\"/ ;				\
 	comment		: /;[^\\r\\n]*/ ;						\
-	symbol		: /[a-zA-Z0-+\\-%*\\/\\\\=<>!&]+/ ;		\
+	symbol		: /[a-zA-Z0-9_+\\-%*\\/\\\\=<>!&]+/ ;		\
 	qexpr		: '{' <expr>* '}' ;						\
 	sexpr		: '(' <expr>* ')' ;						\
 	expr		: <number> | <boolean> | <string> |		\
@@ -60,7 +60,7 @@ int main(int argc, char** argv){
 	}
 
 	//Version and exit info
-	puts("Lisp Version 0.0.10");
+	puts("Lisp Version 0.1.0");
 	puts("Ctrl-C to exit\n");
 
 	while(1) {
@@ -902,7 +902,7 @@ void lenv_add_builtins(lenv* e) {
 	ADD_BUILTIN(eval,eval);
 	ADD_BUILTIN(join,join);
 	ADD_BUILTIN(def, def);
-	ADD_BUILTIN(put, put);
+	ADD_BUILTIN(=, put);
 	ADD_BUILTIN(\\, lambda);
 	ADD_BUILTIN(eq, eq);
 	ADD_BUILTIN(nand, nand);
