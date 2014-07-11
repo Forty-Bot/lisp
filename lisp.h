@@ -16,15 +16,18 @@ struct lval{
 	enum ltype {
 		LVAL_NUM,
 		LVAL_BOOL,
+		LVAL_STR,
 		LVAL_ERR,
 		LVAL_SYM,
 		LVAL_SEXPR,
 		LVAL_QEXPR,
-		LVAL_FUNC} type;
+		LVAL_FUNC
+	} type;
 
 	long num;
 	char* err;
 	char* sym;
+	char* str;
 
 	lbuiltin builtin;
 	lenv* env;
@@ -59,7 +62,7 @@ struct lenv{
  * The hash table size should always be a factor of 2
  * This means our double hash needs to be odd, but we can make that work
  */
-#define LENV_INIT 32
+#define LENV_INIT 64
 //Use a smaller value for local scope
 #define LENV_LOCAL_INIT 8
 
@@ -68,7 +71,9 @@ struct lenv{
 #define LVAL_ERR_MAX 512
 
 lval* lval_num(long);
+lval* lval_bool(int);
 lval* lval_err(char*, ...);
+lval* lval_str(char*);
 lval* lval_sym(char*);
 lval* lval_sexp();
 
@@ -82,10 +87,12 @@ lval* lval_equals(lval*, lval*);
 
 void lval_print(lval*);
 void lval_expr_print(lval*, char, char);
+void lval_str_print(lval*);
 void lval_println(lval*);
 
 lval* lval_read(mpc_ast_t*);
 lval* lval_read_num(mpc_ast_t*);
+lval* lval_read_str(mpc_ast_t*);
 
 lval* lval_eval(lenv*, lval*);
 lval* lval_eval_sexpr(lenv*, lval*);
@@ -104,6 +111,10 @@ lval* builtin_def(lenv*, lval*);
 lval* builtin_put(lenv*, lval*);
 lval* builtin_op(lenv*, lval*, char*);
 lval* builtin_eq(lenv*, lval*);
+lval* builtin_load(lenv*, lval*);
+lval* builtin_print(lenv*, lval*);
+lval* builtin_err(lenv*, lval*);
+lval* builtin_exit(lenv*, lval*);
 //lval* builtin(lval*, char*);
 
 lenv* lenv_new(int);
