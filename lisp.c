@@ -13,6 +13,7 @@ int main(int argc, char** argv){
 
 	//Init the parser
 	mpc_parser_t* Number	= mpc_new("number");
+	mpc_parser_t* Boolean	= mpc_new("boolean");
 	mpc_parser_t* Symbol	= mpc_new("symbol");
 	mpc_parser_t* Sexpr		= mpc_new("sexpr");
 	mpc_parser_t* Qexpr		= mpc_new("qexpr");
@@ -22,18 +23,19 @@ int main(int argc, char** argv){
 	mpca_lang(MPCA_LANG_DEFAULT,
 	"\
 	number		: /-?[0-9]+/ ;							\
+	boolean		: \"true\" | \"false\" ;					\
 	symbol		: /[a-zA-Z0-+\\-%*\\/\\\\=<>!&]+/ ;		\
 	qexpr		: '{' <expr>* '}' ;						\
 	sexpr		: '(' <expr>* ')' ;						\
-	expr		: <number> | <symbol> | <sexpr> | <qexpr>;	\
+	expr		: <number> | <boolean> | <symbol> | <sexpr> | <qexpr>;	\
 	lisp		: /^/ <expr>* /$/ ;						\
-	", Number, Symbol, Qexpr, Sexpr, Expr, Lisp);
+	", Number, Boolean, Symbol, Qexpr, Sexpr, Expr, Lisp);
 
 	lenv* e = lenv_new(LENV_INIT);
 	lenv_add_builtins(e);
 
 	//Version and exit info
-	puts("Lisp Version 0.0.4");
+	puts("Lisp Version 0.0.10");
 	puts("Ctrl-C to exit\n");
 
 	while(1) {
@@ -64,78 +66,10 @@ int main(int argc, char** argv){
 
 	lenv_del(e);
 
-	mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Lisp);
+	mpc_cleanup(6, Number, Boolean, Symbol, Sexpr, Qexpr, Expr, Lisp);
 	return 0;
 
 }
-
-/*lval eval(mpc_ast_t* t){
-
-		//Return numbers
-		if(strstr(t->tag, "number")) {
-
-			errno = 0;
-			int number = strtol(t->contents, NULL, 10);  //Base 10
-			return errno != ERANGE ? lval_num(number) : lval_err(LERR_BAD_NUM);
-
-		}
-		//Get the operator
-		char* op = t->children[1]->contents;
-
-		//Evaluate the first expr
-		lval result = eval(t->children[2]);
-
-		//Loop until we hit a )
-		for(int i = 3; strstr(t->children[i]->tag, "expr"); i++){
-
-			result = eval_op(op, result, eval(t->children[i]));
-
-		}
-
-		return result;
-}*/
-
-/*lval eval_op(char* op, lval a, lval b){
-
-	//If there is an error, pass it up the chain
-	if(a.type == LVAL_ERR) return a;
-	if(b.type == LVAL_ERR) return b;
-
-	//This only works with operators in C, but it does cut down on the repetition
-	#define ADD_OP(operator) if(strcmp(op, #operator) == 0) return lval_num(a.r.num operator b.r.num);
-
-	ADD_OP(+)
-	ADD_OP(-)
-	ADD_OP(*)
-	ADD_OP(%)
-
-	#undef ADD_OP
-
-	//These functions should take two longs as arguments
-	#define ADD_OP(operator, function) if(strcmp(op, #operator) == 0) return lval_num(function(a.r.num, b.r.num));
-
-	ADD_OP(^, pow)
-	ADD_OP(min, fmin)
-	ADD_OP(max, fmax)
-
-	#undef ADD_OP
-
-	//These functions return lvals
-	#define ADD_OP(operator, function) if(strcmp(op, #operator) == 0) return function(a.r.num, b.r.num);
-
-	ADD_OP(/, divide)
-
-	#undef ADD_OP
-
-	return lval_err(LERR_BAD_OP);
-
-}*/
-
-/*lval divide(long a, long b){
-
-	return b == 0 ? lval_err("Division by zero") : lval_num(a / b);
-
-}*/
 
 //Create an lval from a given number
 lval* lval_num(long num){
@@ -216,10 +150,21 @@ lval* lval_lambda(lval* formals, lval* body) {
 
 }
 
+//Booleans are immutable, so we only return pointers to LVAL_TRUE or LVAL_FALSE
+lval* lval_bool(int boolean) {
+
+	if(boolean)
+		return LVAL_TRUE;
+	else
+		return LVAL_FALSE;
+
+}
+
 void lval_del(lval* v){
 
 	switch(v->type){
 		case(LVAL_NUM): break;
+		case(LVAL_BOOL): return;  //Can't free an immutable
 		case(LVAL_FUNC): if(!v->builtin) {
 			lenv_del(v->env);
 			lval_del(v->formals);
@@ -270,6 +215,43 @@ lval* lval_take(lval* v, int index){
 	return pop;
 }
 
+//Tests to see if two lvals are equal (identical)
+lval* lval_equals(lval* x, lval* y) {
+
+	if(x == y) return LVAL_TRUE;  //This takes care of booleans, since immutibility
+	if(x->type != y->type) return LVAL_FALSE;  //TODO: should we error on this?
+
+	switch(x->type) {
+		case(LVAL_BOOL): break;
+		case(LVAL_NUM): if(x->num == y->num) return LVAL_TRUE; break;
+		case(LVAL_FUNC): if(x->builtin) {
+			if(x->builtin == y->builtin) return LVAL_TRUE; break;
+		} else {
+			if((lenv_equals(x->env, y->env) == LVAL_TRUE) &&
+			(lval_equals(x->formals, y->formals) == LVAL_TRUE) &&
+			(lval_equals(x->body, y->body) == LVAL_TRUE)) return LVAL_TRUE; break;
+		}
+		case(LVAL_ERR): if(strcmp(x->err, y->err) == 0) return LVAL_TRUE; break;
+		case(LVAL_SYM): if(strcmp(x->sym, y->sym) == 0) return LVAL_TRUE; break;
+		case(LVAL_QEXPR):
+		case(LVAL_SEXPR): if(x->count != y->count) break;
+			for(int i = 0; i < x->count; i++) {
+				if(lval_equals(x->cell[i], y->cell[i]) == LVAL_FALSE) break;
+			} return LVAL_TRUE;  //Everything equals
+	}
+	return LVAL_FALSE;
+
+}
+
+//Compare 2 numbers
+/*rel lval_compare(lval* x, lval* y) {
+
+	if(x->num > y->num) return GT;
+	else if(x->num == y->num) return EQ;
+	else return LT;
+
+}*/
+
 lval* lval_join(lval* x, lval* y) {
 
 	//Add all the cells in y to x
@@ -287,6 +269,7 @@ lval* lval_copy(lval* v) {
 
 	switch(v->type) {
 		case(LVAL_NUM): x->num = v->num; break;
+		case(LVAL_BOOL): return v;
 		case(LVAL_FUNC): if(v->builtin) {
 			x->builtin = v->builtin;
 		} else {
@@ -309,33 +292,20 @@ lval* lval_copy(lval* v) {
 	return x;
 }
 
-//Print an lval to stddout
-/*void lval_print(lval v){
-
-		switch(v.type){
-			case(LVAL_NUM):
-				printf("%li", v.r.num); break;
-
-			case(LVAL_ERR):
-				#define PRINT_E(error, message) if (v.r.err == (error)) { printf(message); }
-				PRINT_E(LERR_BAD_NUM, "Error: Invalid Number")
-				else PRINT_E(LERR_BAD_OP, "Error: Invalid Operator")
-				else PRINT_E(LERR_DIV_0, "Error: Divide by Zero")
-				#undef PRINT_E
-			break;
-		}
-}*/
-
 void lval_print(lval* v){
 
 	switch(v->type){
+		case(LVAL_BOOL): if(v == LVAL_TRUE) printf("true");
+			else printf("false"); break;
 		case(LVAL_NUM): printf("%li", v->num); break;
 		case(LVAL_ERR): printf("Error: %s", v->err); break;
 		case(LVAL_SYM): printf("%s", v->sym); break;
 		case(LVAL_FUNC): if(v->builtin) {
 			printf("<builtin>");
 		} else {
-			printf("(\\ "); lval_print(v->formals); putchar(' '); lval_print(v->body); putchar(')');
+			printf("(\\ "); lval_print(v->formals);
+			putchar(' ');
+			lval_print(v->body); putchar(')');
 		} break;
 		case(LVAL_SEXPR): lval_expr_print(v, '(', ')'); break;
 		case(LVAL_QEXPR): lval_expr_print(v, '{', '}'); break;
@@ -374,6 +344,10 @@ lval* lval_read(mpc_ast_t* t){
 	//Return if it's a symbol or number
 	if(strstr(t->tag, "number")) return lval_read_num(t);
 	if(strstr(t->tag, "symbol")) return lval_sym(t->contents);
+	if(strstr(t->tag, "boolean")) {
+		if(strstr(t->contents, "true")) return LVAL_TRUE;
+		else return LVAL_FALSE;
+	}
 
 	//It should be an sexpr or the root
 	lval* tree = NULL;
@@ -503,6 +477,7 @@ char* ltype_name(int type){
 	switch(type) {
 		case(LVAL_FUNC): return "Function";
 		case(LVAL_NUM): return "Number";
+		case(LVAL_BOOL): return "Boolean";
 		case(LVAL_ERR): return "Error";
 		case(LVAL_SYM): return "Symbol";
 		case(LVAL_SEXPR): return "S-Expression";
@@ -671,6 +646,80 @@ lval* builtin_lambda(lenv* e, lval* args) {
 	return lval_lambda(formals, body);
 
 }
+
+//Takes >2 args and compares them so that (eq a b c d) is equivlant to (and (eq a b) (eq b c) (eq c d))
+lval* builtin_eq(lenv* e, lval* args) {
+
+	LASSERT(args, (args->count < 2), "Function \"eq\" got wrong number of args: got %i, expected at least 2", args->count);
+	lval* current = lval_pop(args, 0);
+	while(args->count) {  //Loop over the arguments and test them
+		lval* next = lval_pop(args, 0);
+		if(lval_equals(current, next) == LVAL_FALSE){
+			lval_del(args);  //Not all args are equal
+			return LVAL_FALSE;
+		}
+		lval_del(current);
+		current = next;
+	}
+	lval_del(args);
+	return LVAL_TRUE;
+
+}
+
+lval* builtin_if(lenv* e, lval* args) {
+
+	LASSERT_ARGS(args, "if", args->count, 3);
+	LASSERT_TYPE(args, "if", 1, args->cell[0]->type, LVAL_BOOL);
+	LASSERT_TYPE(args, "if", 2, args->cell[1]->type, LVAL_QEXPR);
+	LASSERT_TYPE(args, "if", 3, args->cell[2]->type, LVAL_QEXPR);
+
+	args->cell[1]->type = LVAL_SEXPR;
+	args->cell[2]->type = LVAL_SEXPR;
+
+	lval* result;
+	if(args->cell[0] == LVAL_TRUE) result = lval_eval(e, lval_pop(args, 1));
+	else result = lval_eval(e, lval_pop(args, 2));
+	lval_del(args);
+	return result;
+
+}
+
+lval* builtin_nand(lenv* e, lval* args) {
+
+	LASSERT_ARGS(args, "not", args->count, 2);
+	LASSERT_TYPE(args, "not", 1, args->cell[0]->type, LVAL_BOOL);
+	LASSERT_TYPE(args, "not", 2, args->cell[1]->type, LVAL_BOOL);
+
+	lval* x = args->cell[0];
+	lval* y = args->cell[1];
+	lval_del(args);
+	return (x == LVAL_TRUE && y == LVAL_TRUE) ? LVAL_FALSE : LVAL_TRUE;
+
+}
+
+lval* builtin_compare(lenv* e, lval* args, char* func) {
+
+	LASSERT_ARGS(args, func, args->count, 2);
+	LASSERT_TYPE(args, func, 1, args->cell[0]->type, LVAL_NUM);
+	LASSERT_TYPE(args, func, 2, args->cell[1]->type, LVAL_NUM);
+
+	lval* result;
+	#define ADD_REL(rel, op) do{ if(strcmp(func, #rel) == 0) { result = (args->cell[0]->num op args->cell[1]->num) ? LVAL_TRUE : LVAL_FALSE; } } while(false)
+	ADD_REL(gt, >);
+	ADD_REL(gte, >=);
+	ADD_REL(lt, <);
+	ADD_REL(lte, <=);
+	#undef ADD_REL
+	lval_del(args);
+	return result;
+
+}
+
+lval* builtin_gt(lenv* e, lval* args) { return builtin_compare(e, args, "gt");  }
+lval* builtin_lt(lenv* e, lval* args) { return builtin_compare(e, args, "lt");  }
+lval* builtin_gte(lenv* e, lval* args) { return builtin_compare(e, args, "gte"); }
+lval* builtin_lte(lenv* e, lval* args) { return builtin_compare(e, args, "lte"); }
+
 #undef LASSERT
 #undef LASSERT_TYPE
 #undef LASSERT_ARGS
@@ -706,34 +755,16 @@ void lenv_add_builtins(lenv* e) {
 	ADD_BUILTIN(def, def);
 	ADD_BUILTIN(put, put);
 	ADD_BUILTIN(\\, lambda);
+	ADD_BUILTIN(eq, eq);
+	ADD_BUILTIN(nand, nand);
+	ADD_BUILTIN(if, if);
+	ADD_BUILTIN(gt, gt);
+	ADD_BUILTIN(gte, gte);
+	ADD_BUILTIN(lt, lt);
+	ADD_BUILTIN(lte, lte);
 	#undef ADD_BUILTIN
 
 }
-
-/*lval* builtin(lval* args, char* func_name) {
-
-	//Helper macro for builtin_funcs
-	#define ADD_FUNC(function) do{ if(strcmp(#function, func_name) == 0) return builtin_##function(args); } while(false)
-	ADD_FUNC(list);
-	ADD_FUNC(head);
-	ADD_FUNC(tail);
-	ADD_FUNC(join);
-	ADD_FUNC(eval);
-	#undef ADD_FUNC
-
-	//Helper macro for math.h functions (implemented in builtin_op)
-	#define ADD_FUNC(operator) do{ if(strcmp(#operator, func_name) == 0) return builtin_op(args, func_name); } while(false)
-	ADD_FUNC(^);
-	ADD_FUNC(min);
-	ADD_FUNC(max);
-	#undef ADD_FUNC
-
-	if(strstr("+-*%/", func_name)) return builtin_op(args, func_name);
-
-	lval_del(args);
-	return lval_err("Unknown function");
-
-}*/
 
 /* djb2 by Dan Bernstein
  * This and the next function retrieved from <http://www.cse.yorku.ca/~oz/hash.html> on 6/29/14
@@ -836,7 +867,7 @@ lval* lenv_get(lenv* e, lval* k) {
 	if(e->par)
 		return lenv_get(e->par, k);
 	else
-		return lval_err("unbound symbol");
+		return lval_err("unbound symbol: \"%s\"", k->sym);
 
 }
 
@@ -905,5 +936,36 @@ void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
 	lenv_put(e, k, v);
 	lval_del(k);
 	lval_del(v);
+
+}
+
+lval* lenv_equals(lenv* x, lenv* y) {
+
+	if(x == y) return LVAL_TRUE;
+	if(x == NULL || y == NULL) return LVAL_FALSE;  //Either x is NULL or y is NULL, but not both, therefore !=
+	if((lenv_equals(x->par, y->par) == LVAL_FALSE)) return LVAL_FALSE;  //Check parents
+	if(x->max != y->max) return LVAL_FALSE;
+	if(x->count != y->count) return LVAL_FALSE;
+	for(int i = 0; i < x->count; i++) {
+		lentry xent = x->table[i];
+		lentry yent = y->table[i];
+		if(xent.sym == yent.sym) {
+			//do nothing
+		} else if((xent.sym == NULL) || (yent.sym == NULL)) {//Either one or the other is null but not both
+			return LVAL_FALSE;
+		} else if(strcmp(xent.sym, yent.sym) != 0) {
+			return LVAL_FALSE;
+		}
+		//sym is equal literally or lexically
+		if(xent.v == yent.v) {
+			//do nothing
+		} else if((xent.v == NULL) || (yent.v == NULL)) {
+			return LVAL_FALSE;
+		} else if(lval_equals(xent.v, yent.v) == LVAL_FALSE) {
+			return LVAL_FALSE;
+		}
+	}
+	//All the values are equal
+	return LVAL_TRUE;
 
 }

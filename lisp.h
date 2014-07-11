@@ -1,6 +1,8 @@
 #ifndef LISP_H
 #define LISP_H
 
+#include <stdbool.h>
+
 #include "mpc.h"
 
 struct lval;
@@ -11,7 +13,14 @@ typedef struct lenv lenv;
 typedef lval*(*lbuiltin)(lenv*, lval*);
 
 struct lval{
-	enum ltype { LVAL_NUM, LVAL_ERR, LVAL_SYM, LVAL_SEXPR, LVAL_QEXPR, LVAL_FUNC} type;
+	enum ltype {
+		LVAL_NUM,
+		LVAL_BOOL,
+		LVAL_ERR,
+		LVAL_SYM,
+		LVAL_SEXPR,
+		LVAL_QEXPR,
+		LVAL_FUNC} type;
 
 	long num;
 	char* err;
@@ -26,12 +35,19 @@ struct lval{
 	struct lval** cell;
 };
 
+static lval L_TRUE = {LVAL_BOOL, true};
+static lval L_FALSE = {LVAL_BOOL, false};
+lval* LVAL_TRUE = &L_TRUE;
+lval* LVAL_FALSE = &L_FALSE;
+
+//typedef enum rel {GT, LT, EQ} rel;
+
 typedef struct lentry{
 	char* sym;
 	lval* v;
 } lentry;
 
-//lenvs are heiarchal doubly hashed hashtables
+//lenvs are hiearchal doubly hashed hashtables
 struct lenv{
 	lenv* par;
 	int max;
@@ -61,6 +77,8 @@ lval* lval_append(lval*, lval*);
 lval* lval_join(lval*, lval*);
 lval* lval_take(lval*, int);
 lval* lval_pop(lval*, int);
+lval* lval_equals(lval*, lval*);
+//rel lval_compare(lval*, lval*);
 
 void lval_print(lval*);
 void lval_expr_print(lval*, char, char);
@@ -85,6 +103,7 @@ lval* builtin_lambda(lenv*, lval*);
 lval* builtin_def(lenv*, lval*);
 lval* builtin_put(lenv*, lval*);
 lval* builtin_op(lenv*, lval*, char*);
+lval* builtin_eq(lenv*, lval*);
 //lval* builtin(lval*, char*);
 
 lenv* lenv_new(int);
@@ -96,6 +115,7 @@ lval* lenv_get(lenv*, lval*);
 void lenv_resize(lenv*, int);
 void lenv_add_builtin(lenv*, char*, lbuiltin);
 void lenv_add_builtins(lenv*);
+lval* lenv_equals(lenv*, lenv*);
 
 //lval eval(mpc_ast_t*);
 //lval eval_op(char*, lval, lval);
