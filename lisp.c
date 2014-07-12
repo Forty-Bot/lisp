@@ -72,9 +72,11 @@ int main(int argc, char** argv){
 	lisp		: /^/ <expr>* /$/ ;						\
 	", Number, Boolean, String, Comment, Symbol, Qexpr, Sexpr, Expr, Lisp);
 
+	//Init the env
 	lenv* e = lenv_new(LENV_INIT);
 	lenv_add_builtins(e);
 
+	//Read in files
 	if(argc >= 2) {
 		for(int i = 1; i < argc; i++){
 			lval* args = lval_append(lval_sexp(), lval_str(argv[i]));
@@ -86,7 +88,8 @@ int main(int argc, char** argv){
 
 	//Version and exit info
 	puts("Lisp Version 0.1.0");
-	puts("Ctrl-C to exit\n");
+	puts("Ctrl-C or (exit 0) to exit\n");
+	//printf("%i", sizeof(lval));
 
 	while(1) {
 
@@ -122,7 +125,7 @@ int main(int argc, char** argv){
 }
 
 //Create an lval from a given number
-lval* lval_num(long num){
+lval* lval_num(const long num){
 
 	lval* v = malloc(sizeof(lval));
 	v->type = LVAL_NUM;
@@ -139,9 +142,9 @@ lval* lval_err(char* fmt, ...){
 
 	va_list va;
 	va_start(va, fmt);
-	v->err = malloc(LVAL_ERR_MAX);
-	vsnprintf(v->err, LVAL_ERR_MAX - 1, fmt, va);
-	v->err = realloc(v->err, strlen(v->err) + 1);  //Free excess space in the string
+	v->str = malloc(LVAL_ERR_MAX);
+	vsnprintf(v->str, LVAL_ERR_MAX - 1, fmt, va);
+	v->str = realloc(v->str, strlen(v->str) + 1);  //Free excess space in the string
 	va_end(va);
 	return v;
 
@@ -162,8 +165,8 @@ lval* lval_sym(char* message){
 
 	lval* v = malloc(sizeof(lval));
 	v->type = LVAL_SYM;
-	v->sym = malloc(strlen(message) + 1);
-	strcpy(v->sym, message);
+	v->str = malloc(strlen(message) + 1);
+	strcpy(v->str, message);
 	return v;
 
 }
@@ -231,8 +234,8 @@ void lval_del(lval* v){
 			lval_del(v->body);
 		} break;
 		case(LVAL_STR): free(v->str); break;
-		case(LVAL_ERR): free(v->err); break;
-		case(LVAL_SYM): free(v->sym); break;
+		case(LVAL_ERR): free(v->str); break;
+		case(LVAL_SYM): free(v->str); break;
 		case(LVAL_SEXPR):
 		case(LVAL_QEXPR):
 			for(int i = 0; i < v->count; i++)  //Free the array of lvals
@@ -292,8 +295,8 @@ lval* lval_equals(lval* x, lval* y) {
 			(lval_equals(x->formals, y->formals) == LVAL_TRUE) &&
 			(lval_equals(x->body, y->body) == LVAL_TRUE)) return LVAL_TRUE; break;
 		}
-		case(LVAL_ERR): if(strcmp(x->err, y->err) == 0) return LVAL_TRUE; break;
-		case(LVAL_SYM): if(strcmp(x->sym, y->sym) == 0) return LVAL_TRUE; break;
+		case(LVAL_ERR): if(strcmp(x->str, y->str) == 0) return LVAL_TRUE; break;
+		case(LVAL_SYM): if(strcmp(x->str, y->str) == 0) return LVAL_TRUE; break;
 		case(LVAL_STR): if(strcmp(x->str, y->str) == 0) return LVAL_TRUE; break;
 		case(LVAL_QEXPR):
 		case(LVAL_SEXPR): if(x->count != y->count) break;
@@ -331,7 +334,7 @@ lval* lval_copy(lval* v) {
 
 	switch(v->type) {
 		case(LVAL_NUM): x->num = v->num; break;
-		case(LVAL_BOOL): return v;
+		case(LVAL_BOOL): free(x); return v;
 		case(LVAL_FUNC): if(v->builtin) {
 			x->builtin = v->builtin;
 		} else {
@@ -340,8 +343,8 @@ lval* lval_copy(lval* v) {
 			x->formals = lval_copy(v->formals);
 			x->body = lval_copy(v->body);
 		} break;
-		case(LVAL_ERR): x->err = malloc(strlen(v->err) + 1); strcpy(x->err, v->err); break;
-		case(LVAL_SYM): x->sym = malloc(strlen(v->sym) + 1); strcpy(x->sym, v->sym); break;
+		case(LVAL_ERR): x->str = malloc(strlen(v->str) + 1); strcpy(x->str, v->str); break;
+		case(LVAL_SYM): x->str = malloc(strlen(v->str) + 1); strcpy(x->str, v->str); break;
 		case(LVAL_STR): x->str = malloc(strlen(v->str) + 1); strcpy(x->str, v->str); break;
 		case(LVAL_SEXPR):
 		case(LVAL_QEXPR):
@@ -361,8 +364,8 @@ void lval_print(lval* v){
 		case(LVAL_BOOL): if(v == LVAL_TRUE) printf("true");
 			else printf("false"); break;
 		case(LVAL_NUM): printf("%li", v->num); break;
-		case(LVAL_ERR): printf("Error: %s", v->err); break;
-		case(LVAL_SYM): printf("%s", v->sym); break;
+		case(LVAL_ERR): printf("Error: %s", v->str); break;
+		case(LVAL_SYM): printf("%s", v->str); break;
 		case(LVAL_STR): lval_str_print(v); break;
 		case(LVAL_FUNC): if(v->builtin) {
 			printf("<builtin>");
@@ -524,7 +527,7 @@ lval* lval_call(lenv* e, lval* func, lval* args) {
 		lval* sym = lval_pop(func->formals, 0);
 
 		//Special variable-arguments case
-		if(strcmp(sym->sym, "&") == 0) {
+		if(strcmp(sym->str, "&") == 0) {
 			if(func->formals->count != 1) {  //& must be followed by exactly one symbol
 				lval_del(args);
 				return lval_err("Function format invalid: symbol \"&\" not followed by exactly one symbol");
@@ -539,13 +542,14 @@ lval* lval_call(lenv* e, lval* func, lval* args) {
 
 		lval* val = lval_pop(args, 0);
 		lenv_put(func->env, sym, val);
+		lval_del(val);
 		lval_del(sym);
 	}
 
 	lval_del(args);
 
 	//If we have unpassed variable arguments
-	if(func->formals->count > 0 && strcmp(func->formals->cell[0]->sym, "&") == 0) {
+	if(func->formals->count > 0 && strcmp(func->formals->cell[0]->str, "&") == 0) {
 		if(func->formals->count != 2) //& has to have a list to bind
 			return lval_err("Function format invalid: symbol \"&\" not followed by exactly one symbol");
 
@@ -566,7 +570,7 @@ lval* lval_call(lenv* e, lval* func, lval* args) {
 		return lval_copy(func);
 }
 
-char* ltype_name(int type){
+char* ltype_name(enum ltype type){
 
 	switch(type) {
 		case(LVAL_FUNC): return "Function";
@@ -576,7 +580,6 @@ char* ltype_name(int type){
 		case(LVAL_SYM): return "Symbol";
 		case(LVAL_SEXPR): return "S-Expression";
 		case(LVAL_QEXPR): return "Q-Expression";
-		default: return "Unknown";
 	}
 
 }
@@ -700,7 +703,9 @@ lval* builtin_join(lenv* e, lval* args) {
 
 }
 
-static lval* builtin_var(lenv* e, lval* args, char* func) {
+typedef enum var {VAR_DEF, VAR_PUT} var;
+
+static lval* builtin_var(lenv* e, lval* args, var func) {
 
 	LASSERT_TYPE(args, "def", 0, args->cell[0]->type, LVAL_QEXPR);
 
@@ -712,8 +717,10 @@ static lval* builtin_var(lenv* e, lval* args, char* func) {
 	LASSERT_ARGS(args, "def", syms->count, args->count - 1);
 
 	for(int i = 0; i < syms->count; i++) {
-		if(strcmp(func, "def") == 0) lenv_def(e, syms->cell[i], args->cell[i+1]);
-		if(strcmp(func, "=") == 0) lenv_put(e, syms->cell[i], args->cell[i+1]);
+		switch(func) {
+			case(VAR_DEF): lenv_def(e, syms->cell[i], args->cell[i+1]); break;
+			case(VAR_PUT): lenv_put(e, syms->cell[i], args->cell[i+1]); break;
+		}
 	}
 
 	lval_del(args);
@@ -721,8 +728,8 @@ static lval* builtin_var(lenv* e, lval* args, char* func) {
 
 }
 
-lval* builtin_def(lenv* e, lval* args) {return builtin_var(e, args, "def");}
-lval* builtin_put(lenv* e, lval* args) {return builtin_var(e, args, "=");}
+lval* builtin_def(lenv* e, lval* args) {return builtin_var(e, args, VAR_DEF);}
+lval* builtin_put(lenv* e, lval* args) {return builtin_var(e, args, VAR_PUT);}
 
 lval* builtin_lambda(lenv* e, lval* args) {
 
@@ -791,28 +798,32 @@ lval* builtin_nand(lenv* e, lval* args) {
 
 }
 
-lval* builtin_compare(lenv* e, lval* args, char* func) {
+typedef enum rel {REL_LT, REL_GT, REL_GTE, REL_LTE} rel;
+
+lval* builtin_compare(lenv* e, lval* args, rel func) {
 
 	LASSERT_ARGS(args, func, args->count, 2);
 	LASSERT_TYPE(args, func, 1, args->cell[0]->type, LVAL_NUM);
 	LASSERT_TYPE(args, func, 2, args->cell[1]->type, LVAL_NUM);
 
 	lval* result;
-	#define ADD_REL(rel, op) do{ if(strcmp(func, #rel) == 0) { result = (args->cell[0]->num op args->cell[1]->num) ? LVAL_TRUE : LVAL_FALSE; } } while(false)
-	ADD_REL(gt, >);
-	ADD_REL(gte, >=);
-	ADD_REL(lt, <);
-	ADD_REL(lte, <=);
-	#undef ADD_REL
+	switch(func) {
+		#define ADD_REL(relation, op) case(relation): result = (args->cell[0]->num op args->cell[1]->num) ? LVAL_TRUE : LVAL_FALSE; break
+		ADD_REL(REL_GT, >);
+		ADD_REL(REL_GTE, >=);
+		ADD_REL(REL_LT, <);
+		ADD_REL(REL_LTE, <=);
+		#undef ADD_REL
+	}
 	lval_del(args);
 	return result;
 
 }
 
-lval* builtin_gt(lenv* e, lval* args) { return builtin_compare(e, args, "gt");  }
-lval* builtin_lt(lenv* e, lval* args) { return builtin_compare(e, args, "lt");  }
-lval* builtin_gte(lenv* e, lval* args) { return builtin_compare(e, args, "gte"); }
-lval* builtin_lte(lenv* e, lval* args) { return builtin_compare(e, args, "lte"); }
+lval* builtin_gt(lenv* e, lval* args) { return builtin_compare(e, args, REL_GT);  }
+lval* builtin_lt(lenv* e, lval* args) { return builtin_compare(e, args, REL_LT);  }
+lval* builtin_gte(lenv* e, lval* args) { return builtin_compare(e, args, REL_GTE); }
+lval* builtin_lte(lenv* e, lval* args) { return builtin_compare(e, args, REL_GT); }
 
 lval* builtin_load(lenv* e, lval* args) {
 
@@ -994,16 +1005,23 @@ lenv* lenv_new(int size) {
 }
 
 //Delete an lenv
-void lenv_del(lenv* e) {
+void lentry_del(lentry* e, int size) {
 
-	for(int i = 0; i < e->max; i++) {  //Delete the lentries in e->table
+	for(int i = 0; i < size; i++) {  //Delete the lentries in e->table
 		//printf("e->table[%d].v = %p\n", i, e->table[i].v);
-		if(e->table[i].v != NULL) {
-			free(e->table[i].sym);
-			lval_del(e->table[i].v);
+		if(e[i].v != NULL) {
+			free(e[i].sym);
+			lval_del(e[i].v);
 		}
 	}
-	free(e->table);
+	free(e);
+	//free(e);
+
+}
+
+void lenv_del(lenv* e) {
+
+	lentry_del(e->table, e->max);
 	free(e);
 
 }
@@ -1014,19 +1032,19 @@ void lenv_put(lenv* e, lval* k, lval* v){
 
 	if(((float) e->count)/((float) e->max) > 0.75f) lenv_resize(e, e->max * 2);  //Resize if the table is full
 
-	int hash = (int) (djb2(k->sym) % e->max);  //Main hash
-	int dhash = (int) (9 - 2 * (sdbm(k->sym) % 5));  //The jump is from 1-9 odds
+	int hash = (int) (djb2(k->str) % e->max);  //Main hash
+	int dhash = (int) (9 - 2 * (sdbm(k->str) % 5));  //The jump is from 1-9 odds
 
 	for(; (e->table[hash].sym != NULL);  hash = (hash + dhash) % e->max)  //Loop until we find an open spot
-		if(strcmp(e->table[hash].sym, k->sym) == 0) break; //The strings match, so we overwrite the data
+		if(strcmp(e->table[hash].sym, k->str) == 0) break; //The strings match, so we overwrite the data
 
 	if(e->table[hash].sym != NULL){
 		free(e->table[hash].sym);  //Free the old data if we're redefining the symbol
 		lval_del(e->table[hash].v);
 	}
 
-	e->table[hash].sym = malloc(strlen(k->sym) + 1);  //And put in the new
-	strcpy(e->table[hash].sym, k->sym);
+	e->table[hash].sym = malloc(strlen(k->str) + 1);  //And put in the new
+	strcpy(e->table[hash].sym, k->str);
 	e->table[hash].v = lval_copy(v);
 
 	e->count++;
@@ -1035,17 +1053,17 @@ void lenv_put(lenv* e, lval* k, lval* v){
 
 lval* lenv_get(lenv* e, lval* k) {
 
-	int hash = (int) (djb2(k->sym) % e->max);  //The next few lines are the same as lenv_put()
-	int dhash = (int) (9 - 2 * (sdbm(k->sym) % 5));
+	int hash = (int) (djb2(k->str) % e->max);  //The next few lines are the same as lenv_put()
+	int dhash = (int) (9 - 2 * (sdbm(k->str) % 5));
 
 	for(; (e->table[hash].sym != NULL);  hash = (hash + dhash) % e->max)
-		if(strcmp(e->table[hash].sym, k->sym) == 0) break;
+		if(strcmp(e->table[hash].sym, k->str) == 0) break;
 
 	if(e->table[hash].sym != NULL) return lval_copy(e->table[hash].v);
 	if(e->par)
 		return lenv_get(e->par, k);
 	else
-		return lval_err("unbound symbol: \"%s\"", k->sym);
+		return lval_err("unbound symbol: \"%s\"", k->str);
 
 }
 
@@ -1057,6 +1075,7 @@ void lenv_resize(lenv* e, int size) {
 	int tmp_max = e->max;
 	lentry* tmp = malloc(sizeof(lentry) * tmp_max);  //Stick e->table in a tmp array while we make a new table
 	memcpy(tmp, e->table, sizeof(lentry) * tmp_max);
+	free(e->table);
 
 	e->table = malloc(sizeof(lentry) * size);  //Init the new table
 	e->count = 0;
@@ -1070,12 +1089,12 @@ void lenv_resize(lenv* e, int size) {
 		if(tmp[i].sym != NULL) {
 			lval* k = lval_sym(tmp[i].sym);
 			lval* v = lval_copy(tmp[i].v);
-			lenv_put(e, lval_sym(tmp[i].sym), lval_copy(tmp[i].v));
+			lenv_put(e, k, v);
 			lval_del(k);
 			lval_del(v);
 		}
 
-	free(tmp);
+	lentry_del(tmp, tmp_max);
 
 }
 

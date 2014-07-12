@@ -27,18 +27,22 @@ struct lval{
 		LVAL_FUNC
 	} type;
 
-	long num;
-	char* err;
-	char* sym;
-	char* str;
+	union{
+		long num;
+		char* str;
 
-	lbuiltin builtin;
-	lenv* env;
-	lval* formals;
-	lval* body;
+		struct{
+			lbuiltin builtin;
+			lenv* env;
+			lval* formals;
+			lval* body;
+		};
 
-	int count;
-	struct lval** cell;
+		struct{
+			int count;
+			struct lval** cell;
+		};
+	};
 };
 
 static lval L_TRUE = {LVAL_BOOL, true};
@@ -102,7 +106,7 @@ lval* lval_eval_sexpr(lenv*, lval*);
 
 lval* lval_call(lenv*, lval*, lval*);
 
-char* ltype_name(int);
+char* ltype_name(enum ltype);
 
 lval* builtin_head(lenv*, lval*);
 lval* builtin_tail(lenv*, lval*);
