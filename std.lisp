@@ -111,3 +111,9 @@
     {error "No Case Found"}
     {if (eq x (fst (fst cs))) {snd (fst cs)} {unpack case (join (list x) (tail cs))}}
 })
+
+(fun {range begin end} {
+  if (gt begin end)
+    {nil}
+    {join (list begin) (range (+ begin 1) end)}
+})
