@@ -9,9 +9,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 #Include Editline
 find_package(Editline)
-include_directories(${EDITLINE_INCLUDE_DIR})
-set(LIBS ${LIBS} ${EDITLINE_LIBRARIES})
 if(EDITLINE_FOUND)
+  include_directories(${EDITLINE_INCLUDE_DIR})
+  set(LIBS ${LIBS} ${EDITLINE_LIBRARIES})
   add_definitions(-DWITH_EDITLINE)
   link_libraries(edit)
 endif(EDITLINE_FOUND)
