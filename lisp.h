@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2014, Sean Anderson All rights reserved.
+ */
 #ifndef LISP_H
 #define LISP_H
 

@@ -1,3 +1,4 @@
+#Copyright (c) 2014, Sean Anderson All rights reserved.
 #version requirements
 cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 #name

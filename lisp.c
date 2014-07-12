@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2014, Sean Anderson All rights reserved.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
