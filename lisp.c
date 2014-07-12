@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#ifdef _WIN32
+#ifndef WITH_EDITLINE
 
 static char buffer[2048];
 
@@ -25,7 +25,7 @@ void add_history(char* unused) {}
 
 #include <editline/readline.h>
 
-#endif // _WIN32
+#endif // WITH_EDITLINE
 
 #include "mpc.h"
 #include "lisp.h"
