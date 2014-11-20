@@ -1,5 +1,5 @@
-lisp
-====
+lisp-forty
+==========
 
 Yet another Lisp
 

@@ -1,5 +1,21 @@
-/*
- * Copyright (c) 2014, Sean Anderson All rights reserved.
+/**
+ * lisp-forty, a lisp interpreter
+ * Copyright (C) 2014 Sean Anderson
+ *
+ * This file is part of lisp-forty.
+ *
+ * lisp-forty is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Foobar is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with lisp-forty.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 // Fix gcc complaining about fileno
@@ -99,8 +115,11 @@ int main(int argc, char** argv){
 	}
 
 	//Version and exit info
-	puts("Lisp Version 0.1.0");
-	puts("Ctrl-C or (exit 0) to exit\n");
+	puts("lisp-forty 0.1.1\n\n\
+Copyright (C) 2014 Sean Anderson\n\
+This is free software, see the source for copying instructions.\n\
+There is NO warranty, not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n\
+Ctrl-C or (exit 0) to exit");
 	//printf("%i", sizeof(lval));
 
 	while(1) {
@@ -845,9 +864,8 @@ lval* builtin_load(lenv* e, lval* args) {
 	//Load the file
 	mpc_result_t result;
 	int error;
-	char* filename = args->cell[0]->str;
-	char* stdinstr = "stdin";
-	if(strcmp(filename, stdinstr) == 0)
+	char* filename = args->cell[0]->str;	
+	if(strcmp(filename, "stdin") == 0)
 		error = mpc_parse_pipe(filename, stdin, Lisp, &result);
 	else 
 		error = mpc_parse_contents(filename, Lisp, &result);
