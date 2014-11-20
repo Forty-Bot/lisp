@@ -2,6 +2,9 @@
  * Copyright (c) 2014, Sean Anderson All rights reserved.
  */
 
+// Fix gcc complaining about fileno
+#define _POSIX_C_SOURCE 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>

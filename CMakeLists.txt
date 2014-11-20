@@ -1,13 +1,13 @@
-#Copyright (c) 2014, Sean Anderson All rights reserved.
-#version requirements
+# Copyright (c) 2014, Sean Anderson All rights reserved.
+# version requirements
 cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
-#name
+# name
 project(lisp)
 
-#Include extra modules
+# Include extra modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-#Include Editline
+# Include Editline
 find_package(Editline)
 if(EDITLINE_FOUND)
   include_directories(${EDITLINE_INCLUDE_DIR})
@@ -16,12 +16,14 @@ if(EDITLINE_FOUND)
   link_libraries(edit)
 endif(EDITLINE_FOUND)
 
-#Link to math.h
+# Link to math.h
 if(UNIX)
   link_libraries(m)
 endif(UNIX)
 
-#Add c99 flag
+# Add c99 flag
 add_definitions(-std=c99)
-#add executable
-add_executable(lisp lisp.c mpc.c)
+# Add the mpc include dir
+include_directories(mpc)
+# Make the lisp
+add_executable(lisp lisp.c mpc/mpc.c mpc/mpc.h)
