@@ -38,9 +38,17 @@ if(UNIX)
   link_libraries(m)
 endif(UNIX)
 
+# Compile in the standard library
+add_custom_command(
+	OUTPUT std_lisp.h
+	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/std.lisp std.lisp
+	COMMAND xxd -i std.lisp std_lisp.h
+	DEPENDS std.lisp
+)
+
 # Add c99 flag
 add_definitions(-std=c99)
 # Add the mpc include dir
-include_directories(mpc)
+include_directories(mpc ${CMAKE_CURRENT_BINARY_DIR})
 # Make the lisp
-add_executable(lisp-forty lisp.c mpc/mpc.c mpc/mpc.h)
+add_executable(lisp-forty lisp.c mpc/mpc.c mpc/mpc.h std_lisp.h)

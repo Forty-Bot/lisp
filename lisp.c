@@ -28,6 +28,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "std_lisp.h"
+#include "mpc.h"
+#include "lisp.h"
+
 #ifndef WITH_EDITLINE
 
 static char buffer[2048];
@@ -51,9 +55,6 @@ void add_history(char* unused) {}
 
 #endif // WITH_EDITLINE
 
-#include "mpc.h"
-#include "lisp.h"
-
 mpc_parser_t* Number;
 mpc_parser_t* Boolean;
 mpc_parser_t* String;
@@ -65,8 +66,8 @@ mpc_parser_t* Expr;
 mpc_parser_t* Lisp;
 
 
-int main(int argc, char** argv){
-
+lenv* init() {
+	
 	//Init the parser
 	Number	= mpc_new("number");
 	Boolean	= mpc_new("boolean");
@@ -95,7 +96,18 @@ int main(int argc, char** argv){
 	//Init the env
 	lenv* e = lenv_new(LENV_INIT);
 	lenv_add_builtins(e);
+	
+	//Load the standard library
+	lval_del(parse(std_lisp, e));
+		
+	return e;
 
+}
+
+int main(int argc, char** argv){
+
+	lenv* e = init();
+	
 	//Read in files
 	if(argc >= 2) {
 		for(int i = 1; i < argc; i++){
@@ -128,24 +140,10 @@ Ctrl-C or (exit 0) to exit");
 		char* input = readline("lisp> ");
 		add_history(input);
 
-		if(input == NULL) break;  //Check for a null input
-
-		mpc_result_t r;
-		if(!(mpc_parse("<stdin>", input, Lisp, &r))){
-			//Failure to parse the input
-			mpc_err_print(r.error);
-			mpc_err_delete(r.error);
-			free(input);
-			continue;
-		}
-
-		lval* tree = lval_eval(e, lval_read(r.output));
+		lval* tree = parse(input, e);
 		lval_println(tree);
 		lval_del(tree);
-		mpc_ast_delete(r.output);
-
 		free(input);
-
 	}
 
 	lenv_del(e);
@@ -153,6 +151,24 @@ Ctrl-C or (exit 0) to exit");
 	mpc_cleanup(9, Number, Boolean, String, Comment, Symbol, Sexpr, Qexpr, Expr, Lisp);
 	return 0;
 
+}
+
+lval* parse(char* input, lenv* e) {
+	
+	if(input == NULL) return lval_sexp();  //Check for a null input
+
+	mpc_result_t r;
+	if(!(mpc_parse("<stdin>", input, Lisp, &r))){
+		//Failure to parse the input
+		lval* err = lval_err(mpc_err_string(r.error));
+		mpc_err_delete(r.error);
+		return err;
+	}
+	
+
+	lval* tree = lval_eval(e, lval_read(r.output));
+	mpc_ast_delete(r.output);
+	return tree;
 }
 
 //Create an lval from a given number
