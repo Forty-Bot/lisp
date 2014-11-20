@@ -7,6 +7,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include <string.h>
+#include <unistd.h>
 
 #ifndef WITH_EDITLINE
 
@@ -80,10 +81,18 @@ int main(int argc, char** argv){
 	if(argc >= 2) {
 		for(int i = 1; i < argc; i++){
 			lval* args = lval_append(lval_sexp(), lval_str(argv[i]));
-			lval* x = builtin_load(e, args);
-			if(x->type == LVAL_ERR) lval_println(x);
-			lval_del(x);
+			lval* err = builtin_load(e, args);
+			if(err->type == LVAL_ERR) lval_println(err);
+			lval_del(err);
 		}
+	}
+
+	if(!isatty(fileno(stdin))) {  //Check to see if we are in an interactive shell
+		lval* args = lval_append(lval_sexp(), lval_str("stdin"));
+		lval* err = builtin_load(e, args);
+		if(err->type == LVAL_ERR) lval_println(err);
+		lval_del(err);
+		return 0;
 	}
 
 	//Version and exit info
@@ -755,14 +764,14 @@ lval* builtin_eq(lenv* e, lval* args) {
 	lval* current = lval_pop(args, 0);
 	while(args->count) {  //Loop over the arguments and test them
 		lval* next = lval_pop(args, 0);
-		if(lval_equals(current, next) == LVAL_FALSE){
-			lval_del(args);  //Not all args are equal
+		if(lval_equals(current, next) == LVAL_FALSE){  //Not all args are equal
+			lval_del(next); lval_del(current); lval_del(args);
 			return LVAL_FALSE;
 		}
 		lval_del(current);
 		current = next;
 	}
-	lval_del(args);
+	lval_del(current); lval_del(args);
 	return LVAL_TRUE;
 
 }
@@ -832,7 +841,14 @@ lval* builtin_load(lenv* e, lval* args) {
 
 	//Load the file
 	mpc_result_t result;
-	if(mpc_parse_contents(args->cell[0]->str, Lisp, &result)) {
+	int error;
+	char* filename = args->cell[0]->str;
+	char* stdinstr = "stdin";
+	if(strcmp(filename, stdinstr) == 0)
+		error = mpc_parse_pipe(filename, stdin, Lisp, &result);
+	else 
+		error = mpc_parse_contents(filename, Lisp, &result);
+	if(error) {
 		//Parse it
 		//mpc_ast_print(result.output);
 		lval* expr = lval_read(result.output);
