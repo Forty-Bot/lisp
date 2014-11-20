@@ -26,7 +26,6 @@
 #include <math.h>
 #include <stdbool.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "std_lisp.h"
 #include "mpc.h"
@@ -54,6 +53,18 @@ void add_history(char* unused) {}
 #include <editline/readline.h>
 
 #endif // WITH_EDITLINE
+
+#ifdef WINDOWS
+
+#include <io.h>
+#define isatty _isatty
+#define fileno _fileno
+
+#else
+
+#include <unistd.h>
+
+#endif // WINDOWS
 
 mpc_parser_t* Number;
 mpc_parser_t* Boolean;
@@ -623,6 +634,7 @@ char* ltype_name(enum ltype type){
 		case(LVAL_FUNC): return "Function";
 		case(LVAL_NUM): return "Number";
 		case(LVAL_BOOL): return "Boolean";
+		case(LVAL_STR): return "String";
 		case(LVAL_ERR): return "Error";
 		case(LVAL_SYM): return "Symbol";
 		case(LVAL_SEXPR): return "S-Expression";

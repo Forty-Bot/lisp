@@ -33,6 +33,11 @@ if(EDITLINE_FOUND)
   link_libraries(edit)
 endif(EDITLINE_FOUND)
 
+# Fix isatty() includes
+if(WIN32)
+  add_definitions(-DWINDOWS)
+endif(WIN32)
+
 # Link to math.h
 if(UNIX)
   link_libraries(m)
