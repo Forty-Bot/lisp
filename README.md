@@ -5,13 +5,21 @@ Yet another Lisp
 
 Built by following http://www.buildyourownlisp.com/
 
-Differences from BuildYourOwnLisp
----------------------------------
-* Slightly different syntax and variable names
+Current Features
+----------------
 * Q-Expressions
 * Hash tables for variable lookup
 * Builds with CMake
 * Seperate types for booleans
+* Compact standard library
+* GPL'd
+
+Planned Features
+----------------
+* Documentation
+* Consistent style
+* Tail-call optimization
+* Pools for lvals
 
 To build:
 
