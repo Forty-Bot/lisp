@@ -3,7 +3,7 @@ lisp-forty
 
 Yet another Lisp
 
-Built by following http://www.buildyourownlisp.com/
+Created by following http://www.buildyourownlisp.com/
 
 Current Features
 ----------------
