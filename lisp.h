@@ -62,10 +62,8 @@ struct lval{
 	};
 };
 
-static lval L_TRUE = {LVAL_BOOL, {true}};
-static lval L_FALSE = {LVAL_BOOL, {false}};
-lval* LVAL_TRUE = &L_TRUE;
-lval* LVAL_FALSE = &L_FALSE;
+lval* LVAL_TRUE;
+lval* LVAL_FALSE;
 
 //typedef enum rel {GT, LT, EQ} rel;
 
@@ -103,10 +101,15 @@ lval* lval_err(char*, ...);
 lval* lval_str(char*);
 lval* lval_sym(char*);
 lval* lval_sexp();
+lval* lval_qepr();
+lval* lval_func(lbuiltin);
+lval* lval_lambda(lval*, lval*);
+lval* lval_bool(int);
 
 void lval_del(lval*);
 lval* lval_append(lval*, lval*);
 lval* lval_join(lval*, lval*);
+lval* lval_copy(lval*);
 lval* lval_take(lval*, int);
 lval* lval_pop(lval*, int);
 lval* lval_equals(lval*, lval*);
@@ -150,7 +153,6 @@ lenv* lenv_copy(lenv*);
 void lenv_put(lenv*, lval*, lval*);
 void lenv_def(lenv*, lval*, lval*);
 lval* lenv_get(lenv*, lval*);
-void lenv_resize(lenv*, int);
 void lenv_add_builtin(lenv*, char*, lbuiltin);
 void lenv_add_builtins(lenv*);
 lval* lenv_equals(lenv*, lenv*);
