@@ -30,6 +30,7 @@
 #include "std_lisp.h"
 #include "mpc.h"
 #include "lisp.h"
+#include "version.h"
 
 #ifndef WITH_EDITLINE
 
@@ -138,9 +139,9 @@ int main(int argc, char** argv){
 	}
 
 	//Version and exit info
-	puts("lisp-forty 0.1.1.1\n\n\
+	puts("lisp-forty " PROJECT_VERSION "\n\n\
 Copyright (C) 2014 Sean Anderson\n\
-This is free software, see the source for copying instructions.\n\
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
 There is NO warranty, not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n\
 Ctrl-C or (exit 0) to exit");
 	//printf("%i", sizeof(lval));

@@ -17,9 +17,9 @@
 
 
 # version requirements
-cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 # name
-project(lisp-forty)
+project(lisp-forty VERSION 0.1.1.2)
 
 # Include extra modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
@@ -51,9 +51,32 @@ add_custom_command(
 	DEPENDS std.lisp
 )
 
+#Configure version at compile-time
+configure_file(version.h.in version.h @ONLY)
+
 # Add c99 flag
 add_definitions(-std=c99)
 # Add the mpc include dir
 include_directories(mpc ${CMAKE_CURRENT_BINARY_DIR})
 # Make the lisp
-add_executable(lisp-forty lisp.c mpc/mpc.c mpc/mpc.h std_lisp.h)
+add_executable(${PROJECT_NAME} lisp.c mpc/mpc.c mpc/mpc.h std_lisp.h)
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")
+
+set(GENERATE_PACKAGE OFF CACHE BOOL "Generate binary package target")
+
+# Change the installation dir or README.md/LICENSE depending on whether we are making a package
+if(GENERATE_PACKAGE)
+	set(DOC_DIR ".")
+else(GENERATE_PACKAGE)
+	set(DOC_DIR "share/doc/${PROJECT_NAME}")
+endif(GENERATE_PACKAGE)
+
+install(FILES "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_SOURCE_DIR}/LICENSE" DESTINATION "${DOC_DIR}")
+
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.md")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+
+if(GENERATE_PACKAGE)
+	include(CPack)
+endif(GENERATE_PACKAGE)
