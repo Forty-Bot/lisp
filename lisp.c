@@ -138,7 +138,7 @@ int main(int argc, char** argv){
 	}
 
 	//Version and exit info
-	puts("lisp-forty 0.1.1\n\n\
+	puts("lisp-forty 0.1.1.1\n\n\
 Copyright (C) 2014 Sean Anderson\n\
 This is free software, see the source for copying instructions.\n\
 There is NO warranty, not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n\
