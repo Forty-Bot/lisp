@@ -139,7 +139,7 @@ int main(int argc, char** argv){
 
 	//Version and exit info
 	puts("lisp-forty " PROJECT_VERSION "\n\n\
-Copyright (C) 2014 Sean Anderson\n\
+Copyright (C) 2014-16 Sean Anderson\n\
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
 There is NO warranty, not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n\
 Ctrl-C or (exit 0) to exit");
