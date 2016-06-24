@@ -1,6 +1,6 @@
 /**
  * lisp-forty, a lisp interpreter
- * Copyright (C) 2014 Sean Anderson
+ * Copyright (C) 2014-16 Sean Anderson
  *
  * This file is part of lisp-forty.
  *
@@ -79,14 +79,12 @@ lenv* lenv_new(int size) {
 void lentry_del(lentry* e, int size) {
 
 	for(int i = 0; i < size; i++) {  //Delete the lentries in e->table
-		//printf("e->table[%d].v = %p\n", i, e->table[i].v);
 		if(e[i].v != NULL) {
 			free(e[i].sym);
 			lval_del(e[i].v);
 		}
 	}
 	free(e);
-	//free(e);
 
 }
 

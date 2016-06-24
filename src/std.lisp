@@ -1,5 +1,5 @@
 ; lisp-forty, a lisp interpreter
-; Copyright (C) 2014 Sean Anderson
+; Copyright (C) 2014-16 Sean Anderson
 ;
 ; This file is part of lisp-forty.
 ;
