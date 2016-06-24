@@ -62,8 +62,8 @@ struct lval{
 	};
 };
 
-static lval L_TRUE = {LVAL_BOOL, true};
-static lval L_FALSE = {LVAL_BOOL, false};
+static lval L_TRUE = {LVAL_BOOL, {true}};
+static lval L_FALSE = {LVAL_BOOL, {false}};
 lval* LVAL_TRUE = &L_TRUE;
 lval* LVAL_FALSE = &L_FALSE;
 

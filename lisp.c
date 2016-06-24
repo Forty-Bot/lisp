@@ -110,7 +110,7 @@ lenv* init() {
 	lenv_add_builtins(e);
 	
 	//Load the standard library
-	lval_del(parse(std_lisp, e));
+	lval_del(parse((char*) std_lisp, e));
 		
 	return e;
 
@@ -345,23 +345,33 @@ lval* lval_equals(lval* x, lval* y) {
 	if(x->type != y->type) return LVAL_FALSE;  //TODO: should we error on this?
 
 	switch(x->type) {
-		case(LVAL_BOOL): break;
-		case(LVAL_NUM): if(x->num == y->num) return LVAL_TRUE; break;
+		case(LVAL_BOOL):
+			break;
+		case(LVAL_NUM): 
+			if(x->num == y->num) return LVAL_TRUE; 
+			break;
 		case(LVAL_FUNC): if(x->builtin) {
-			if(x->builtin == y->builtin) return LVAL_TRUE; break;
-		} else {
-			if((lenv_equals(x->env, y->env) == LVAL_TRUE) &&
-			(lval_equals(x->formals, y->formals) == LVAL_TRUE) &&
-			(lval_equals(x->body, y->body) == LVAL_TRUE)) return LVAL_TRUE; break;
-		}
-		case(LVAL_ERR): if(strcmp(x->str, y->str) == 0) return LVAL_TRUE; break;
-		case(LVAL_SYM): if(strcmp(x->str, y->str) == 0) return LVAL_TRUE; break;
-		case(LVAL_STR): if(strcmp(x->str, y->str) == 0) return LVAL_TRUE; break;
+			if(x->builtin == y->builtin) return LVAL_TRUE;
+				break;
+			} else {
+				if((lenv_equals(x->env, y->env) == LVAL_TRUE) &&
+				   (lval_equals(x->formals, y->formals) == LVAL_TRUE) &&
+				   (lval_equals(x->body, y->body) == LVAL_TRUE))
+					return LVAL_TRUE;
+				break;
+			}
+		case(LVAL_ERR):
+		case(LVAL_SYM):
+		case(LVAL_STR):
+			if(strcmp(x->str, y->str) == 0) return LVAL_TRUE;
+			break;
 		case(LVAL_QEXPR):
-		case(LVAL_SEXPR): if(x->count != y->count) break;
+		case(LVAL_SEXPR):
+			if(x->count != y->count) break;
 			for(int i = 0; i < x->count; i++) {
 				if(lval_equals(x->cell[i], y->cell[i]) == LVAL_FALSE) break;
-			} return LVAL_TRUE;  //Everything equals
+			}
+			return LVAL_TRUE;  //Everything equals
 	}
 	return LVAL_FALSE;
 
@@ -420,21 +430,40 @@ lval* lval_copy(lval* v) {
 void lval_print(lval* v){
 
 	switch(v->type){
-		case(LVAL_BOOL): if(v == LVAL_TRUE) printf("true");
-			else printf("false"); break;
-		case(LVAL_NUM): printf("%li", v->num); break;
-		case(LVAL_ERR): printf("Error: %s", v->str); break;
-		case(LVAL_SYM): printf("%s", v->str); break;
-		case(LVAL_STR): lval_str_print(v); break;
-		case(LVAL_FUNC): if(v->builtin) {
-			printf("<builtin>");
-		} else {
-			printf("(\\ "); lval_print(v->formals);
-			putchar(' ');
-			lval_print(v->body); putchar(')');
-		} break;
-		case(LVAL_SEXPR): lval_expr_print(v, '(', ')'); break;
-		case(LVAL_QEXPR): lval_expr_print(v, '{', '}'); break;
+		case(LVAL_BOOL):
+			if(v == LVAL_TRUE) {
+				printf("true");
+			} else {
+				printf("false"); 
+			}
+			break;
+		case(LVAL_NUM):
+			printf("%li", v->num);
+			break;
+		case(LVAL_ERR):
+			printf("Error: %s", v->str);
+			break;
+		case(LVAL_SYM):
+			printf("%s", v->str);
+			break;
+		case(LVAL_STR):
+			lval_str_print(v);
+			break;
+		case(LVAL_FUNC):
+			if(v->builtin) {
+				printf("<builtin>");
+			} else {
+				printf("(\\ "); lval_print(v->formals);
+				putchar(' ');
+				lval_print(v->body); putchar(')');
+			}
+			break;
+		case(LVAL_SEXPR):
+			lval_expr_print(v, '(', ')');
+			break;
+		case(LVAL_QEXPR):
+			lval_expr_print(v, '{', '}');
+			break;
 	}
 
 }
@@ -632,14 +661,24 @@ lval* lval_call(lenv* e, lval* func, lval* args) {
 char* ltype_name(enum ltype type){
 
 	switch(type) {
-		case(LVAL_FUNC): return "Function";
-		case(LVAL_NUM): return "Number";
-		case(LVAL_BOOL): return "Boolean";
-		case(LVAL_STR): return "String";
-		case(LVAL_ERR): return "Error";
-		case(LVAL_SYM): return "Symbol";
-		case(LVAL_SEXPR): return "S-Expression";
-		case(LVAL_QEXPR): return "Q-Expression";
+		case(LVAL_FUNC):
+			return "Function";
+		case(LVAL_NUM):
+			return "Number";
+		case(LVAL_BOOL):
+			return "Boolean";
+		case(LVAL_STR):
+			return "String";
+		case(LVAL_ERR):
+			return "Error";
+		case(LVAL_SYM):
+			return "Symbol";
+		case(LVAL_SEXPR):
+			return "S-Expression";
+		case(LVAL_QEXPR):
+			return "Q-Expression";
+		default:
+			return "Not an LVAL!";
 	}
 
 }
@@ -870,6 +909,8 @@ char* rel_name(rel func) {
 			return "lt";
 		case(REL_LTE):
 			return "lte";
+		default:
+			return "Not a comparison function!";
 	}
 }
 

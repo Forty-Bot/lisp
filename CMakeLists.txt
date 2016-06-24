@@ -54,13 +54,28 @@ add_custom_command(
 #Configure version at compile-time
 configure_file(version.h.in version.h @ONLY)
 
-# Add c99 flag
-add_definitions(-std=c99)
+# Add -Wall or equivalent
+if(MSVC)
+	# Force to always compile with W4
+	if(CMAKE_C_FLAGS MATCHES "/W[0-4]")
+		string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+	else()
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4")
+	endif()
+elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-long-long -pedantic")
+endif()
+
 # Add the mpc include dir
 include_directories(mpc ${CMAKE_CURRENT_BINARY_DIR})
 # Make the lisp
 add_executable(${PROJECT_NAME} lisp.c mpc/mpc.c mpc/mpc.h std_lisp.h)
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")
+
+# Set the standard to C++11
+set(C_STANDARD_REQUIRED ON)
+set_property(TARGET ${executable_name} PROPERTY C_STANDARD 11)
+
 
 set(GENERATE_PACKAGE OFF CACHE BOOL "Generate binary package target")
 
