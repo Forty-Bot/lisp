@@ -91,19 +91,18 @@ lenv* init() {
 	Expr	= mpc_new("expr");
 	Lisp	= mpc_new("lisp");
 
-	mpca_lang(MPCA_LANG_DEFAULT,
-	"\
-	number		: /-?[0-9]+/ ;							\
-	boolean		: \"true\" | \"false\" ;				\
-	string	: /\"(\\\\.|[^\"])*\"/ ;				\
-	comment		: /;[^\\r\\n]*/ ;						\
-	symbol		: /[a-zA-Z0-9_+\\-%*\\/\\\\=<>!&]+/ ;		\
-	qexpr		: '{' <expr>* '}' ;						\
-	sexpr		: '(' <expr>* ')' ;						\
-	expr		: <number> | <boolean> | <string> |		\
-			<comment> | <symbol> | <sexpr> | <qexpr>;	\
-	lisp		: /^/ <expr>* /$/ ;						\
-	", Number, Boolean, String, Comment, Symbol, Qexpr, Sexpr, Expr, Lisp);
+	mpca_lang(MPCA_LANG_DEFAULT, "                       \
+	number  : /-?[0-9]+/ ;                               \
+	boolean : \"true\" | \"false\" ;                     \
+	string  : /\"(\\\\.|[^\"])*\"/ ;                     \
+	comment : /;[^\\r\\n]*/ ;                            \
+	symbol  : /[a-zA-Z0-9_+\\-%*\\/\\\\=<>!&]+/ ;        \
+	qexpr   : '{' <expr>* '}' ;                          \
+	sexpr   : '(' <expr>* ')' ;                          \
+	expr    : <number> | <boolean> | <string> |          \
+	          <comment> | <symbol> | <sexpr> | <qexpr> ; \
+	lisp    : /^/ <expr>* /$/ ;",
+	Number, Boolean, String, Comment, Symbol, Qexpr, Sexpr, Expr, Lisp);
 
 	//Init the env
 	lenv* e = lenv_new(LENV_INIT);
