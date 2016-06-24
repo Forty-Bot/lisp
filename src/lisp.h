@@ -101,7 +101,7 @@ lval* lval_err(char*, ...);
 lval* lval_str(char*);
 lval* lval_sym(char*);
 lval* lval_sexp();
-lval* lval_qepr();
+lval* lval_qexpr();
 lval* lval_func(lbuiltin);
 lval* lval_lambda(lval*, lval*);
 lval* lval_bool(int);
