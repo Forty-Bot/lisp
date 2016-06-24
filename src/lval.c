@@ -26,6 +26,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "mpc.h"
 
