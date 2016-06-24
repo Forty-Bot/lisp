@@ -859,11 +859,24 @@ lval* builtin_nand(lenv* e, lval* args) {
 
 typedef enum rel {REL_LT, REL_GT, REL_GTE, REL_LTE} rel;
 
+char* rel_name(rel func) {
+	switch(func) {
+		case(REL_GT):
+			return "gt";
+		case(REL_GTE):
+			return "gte";
+		case(REL_LT):
+			return "lt";
+		case(REL_LTE):
+			return "lte";
+	}
+}
+
 lval* builtin_compare(lenv* e, lval* args, rel func) {
 
-	LASSERT_ARGS(args, func, args->count, 2);
-	LASSERT_TYPE(args, func, 1, args->cell[0]->type, LVAL_NUM);
-	LASSERT_TYPE(args, func, 2, args->cell[1]->type, LVAL_NUM);
+	LASSERT_ARGS(args, rel_name(func), args->count, 2);
+	LASSERT_TYPE(args, rel_name(func), 1, args->cell[0]->type, LVAL_NUM);
+	LASSERT_TYPE(args, rel_name(func), 2, args->cell[1]->type, LVAL_NUM);
 
 	lval* result;
 	switch(func) {
