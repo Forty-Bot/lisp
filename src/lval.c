@@ -21,12 +21,7 @@
 // Fix gcc complaining about fileno
 #define _POSIX_C_SOURCE 1
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
 #include <stdbool.h>
-#include <string.h>
-#include <stdarg.h>
 
 #include "mpc.h"
 

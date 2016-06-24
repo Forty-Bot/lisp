@@ -21,8 +21,6 @@
 #ifndef LISP_H
 #define LISP_H
 
-#include <stdbool.h>
-
 #include "mpc.h"
 
 struct lval;

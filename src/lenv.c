@@ -18,12 +18,6 @@
  * along with lisp-forty.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <stdbool.h>
-#include <string.h>
-
 #include "lisp.h"
 
 /* djb2 by Dan Bernstein
