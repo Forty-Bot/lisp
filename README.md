@@ -1,5 +1,6 @@
 lisp-forty
 ==========
+[![Build Status](https://travis-ci.org/Forty-Bot/lisp-forty.svg?branch=master)](https://travis-ci.org/Forty-Bot/lisp-forty)
 
 Yet another Lisp
 
