@@ -14,23 +14,19 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # lisp-forty.  If not, see <http://www.gnu.org/licenses/>.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
-
-# version requirements
-cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-# name
-project(lisp-forty VERSION 0.1.1.2)
-
-# Include extra modules
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+file(GLOB SOURCES "${CMAKE_CURRENT_SOURCE_DIR}" "*.c")
+add_executable(${PROJECT_NAME} ${SOURCES} "${CMAKE_SOURCE_DIR}/mpc/mpc.c")
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")
 
 # Include Editline
 find_package(Editline)
 if(EDITLINE_FOUND)
-  include_directories(${EDITLINE_INCLUDE_DIR})
-  set(LIBS ${LIBS} ${EDITLINE_LIBRARIES})
-  add_definitions(-DWITH_EDITLINE)
-  link_libraries(edit)
+	include_directories(${EDITLINE_INCLUDE_DIR})
+	set(LIBS ${LIBS} ${EDITLINE_LIBRARIES})
+	add_definitions(-DWITH_EDITLINE)
+	target_link_libraries(${PROJECT_NAME} edit)
 endif(EDITLINE_FOUND)
 
 # Fix isatty() includes
@@ -40,19 +36,22 @@ endif(WIN32)
 
 # Link to math.h
 if(UNIX)
-  link_libraries(m)
+	target_link_libraries(${PROJECT_NAME} m)
 endif(UNIX)
 
 # Compile in the standard library
+set(STD_LIB_IN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/std.lisp")
+set(STD_LIB_OUT_FILE "${GENERATED_DIR}/std_lisp.h")
 add_custom_command(
-	OUTPUT std_lisp.h
-	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/src/std.lisp std.lisp
-	COMMAND xxd -i std.lisp std_lisp.h
-	DEPENDS src/std.lisp
+	OUTPUT ${STD_LIB_OUT_FILE}
+	COMMAND ${CMAKE_COMMAND} -E copy ${STD_LIB_IN_FILE} std.lisp
+	COMMAND xxd -i std.lisp ${STD_LIB_OUT_FILE}
+	DEPENDS ${STD_LIB_IN_FILE}
 )
 
 #Configure version at compile-time
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" version.h @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.h.in" "${GENERATED_DIR}/version.h" @ONLY)
+add_custom_target(generate_headers ALL DEPENDS "${GENERATED_DIR}/version.h" "${GENERATED_DIR}/std_lisp.h")
 
 # Add -Wall or equivalent
 if(MSVC)
@@ -63,35 +62,9 @@ if(MSVC)
 		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4")
 	endif()
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-long-long -pedantic")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic")
 endif()
-
-# Add the mpc include dir
-include_directories(mpc ${CMAKE_CURRENT_BINARY_DIR})
-# Make the lisp
-add_executable(${PROJECT_NAME} src/main.c src/lenv.c src/lval.c mpc/mpc.c mpc/mpc.h std_lisp.h)
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")
 
 # Set the standard to C++11
 set(C_STANDARD_REQUIRED ON)
-set_property(TARGET ${executable_name} PROPERTY C_STANDARD 11)
-
-
-set(GENERATE_PACKAGE OFF CACHE BOOL "Generate binary package target")
-
-# Change the installation dir or README.md/LICENSE depending on whether we are making a package
-if(GENERATE_PACKAGE)
-	set(DOC_DIR ".")
-else(GENERATE_PACKAGE)
-	set(DOC_DIR "share/doc/${PROJECT_NAME}")
-endif(GENERATE_PACKAGE)
-
-install(FILES "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_SOURCE_DIR}/LICENSE" DESTINATION "${DOC_DIR}")
-
-set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
-set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.md")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
-
-if(GENERATE_PACKAGE)
-	include(CPack)
-endif(GENERATE_PACKAGE)
+set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD 11)

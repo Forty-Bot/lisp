@@ -21,61 +21,18 @@ cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 # name
 project(lisp-forty VERSION 0.1.1.2)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS YES)
+
+# Generated files go here
+set(GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
+
+# Add the mpc include dir
+include_directories(mpc ${GENERATED_DIR} "${CMAKE_SOURCE_DIR}/src")
+
 # Include extra modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-# Include Editline
-find_package(Editline)
-if(EDITLINE_FOUND)
-  include_directories(${EDITLINE_INCLUDE_DIR})
-  set(LIBS ${LIBS} ${EDITLINE_LIBRARIES})
-  add_definitions(-DWITH_EDITLINE)
-  link_libraries(edit)
-endif(EDITLINE_FOUND)
-
-# Fix isatty() includes
-if(WIN32)
-  add_definitions(-DWINDOWS)
-endif(WIN32)
-
-# Link to math.h
-if(UNIX)
-  link_libraries(m)
-endif(UNIX)
-
-# Compile in the standard library
-add_custom_command(
-	OUTPUT std_lisp.h
-	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/src/std.lisp std.lisp
-	COMMAND xxd -i std.lisp std_lisp.h
-	DEPENDS src/std.lisp
-)
-
-#Configure version at compile-time
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" version.h @ONLY)
-
-# Add -Wall or equivalent
-if(MSVC)
-	# Force to always compile with W4
-	if(CMAKE_C_FLAGS MATCHES "/W[0-4]")
-		string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-	else()
-		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4")
-	endif()
-elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-long-long -pedantic")
-endif()
-
-# Add the mpc include dir
-include_directories(mpc ${CMAKE_CURRENT_BINARY_DIR})
-# Make the lisp
-add_executable(${PROJECT_NAME} src/main.c src/lenv.c src/lval.c mpc/mpc.c mpc/mpc.h std_lisp.h)
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")
-
-# Set the standard to C++11
-set(C_STANDARD_REQUIRED ON)
-set_property(TARGET ${executable_name} PROPERTY C_STANDARD 11)
-
+add_subdirectory(src)
 
 set(GENERATE_PACKAGE OFF CACHE BOOL "Generate binary package target")
 
