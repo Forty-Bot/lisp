@@ -46,13 +46,13 @@ endif(UNIX)
 # Compile in the standard library
 add_custom_command(
 	OUTPUT std_lisp.h
-	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/std.lisp std.lisp
+	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/src/std.lisp std.lisp
 	COMMAND xxd -i std.lisp std_lisp.h
-	DEPENDS std.lisp
+	DEPENDS src/std.lisp
 )
 
 #Configure version at compile-time
-configure_file(version.h.in version.h @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" version.h @ONLY)
 
 # Add -Wall or equivalent
 if(MSVC)
@@ -69,7 +69,7 @@ endif()
 # Add the mpc include dir
 include_directories(mpc ${CMAKE_CURRENT_BINARY_DIR})
 # Make the lisp
-add_executable(${PROJECT_NAME} lisp.c mpc/mpc.c mpc/mpc.h std_lisp.h)
+add_executable(${PROJECT_NAME} src/main.c src/lenv.c src/lval.c mpc/mpc.c mpc/mpc.h std_lisp.h)
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")
 
 # Set the standard to C++11
