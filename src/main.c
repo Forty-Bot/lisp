@@ -271,7 +271,6 @@ lval* lval_eval(lenv* e, lval* v) {
 	if(v->type == LVAL_SYM){
 		lval* x = lenv_get(e, v);
 		lval_del(v);
-		//return lval_eval(e, x);
 		return x;
 	}
 
@@ -429,10 +428,9 @@ lval* builtin_head(lenv* e, lval* args) {
 	LASSERT_TYPE(args, "head", 0, args->cell[0]->type, LVAL_QEXPR);
 	LASSERT_EMPTY(args, "head", args->cell[0]);
 
-	lval* v;
-	for(v = lval_take(args, 0);
-		v->count > 1;
-		lval_del(lval_pop(v, 1)));  //Delete everything until we have 1 argument left
+	lval* v = lval_take(args, 0);
+	while(v->count > 1)
+		lval_del(lval_pop(v, 1));  //Delete everything until we have 1 argument left
 
 	return v;
 

@@ -124,14 +124,16 @@ void lenv_resize(lenv* e, int size) {
 //You must free k and v
 void lenv_put(lenv* e, lval* k, lval* v){
 
-	if(((float) e->count)/((float) e->max) > 0.75f) lenv_resize(e, e->max * 2);  //Resize if the table is full
+	if(((float) e->count)/((float) e->max) > 0.75f) lenv_resize(e, e->max * 8);  //Resize if the table is full
 
 	int hash = (int) (djb2(k->str) % e->max);  //Main hash
-	int dhash = (int) (9 - 2 * (sdbm(k->str) % 5));  //The jump is from 1-9 odds
 
-	for(; (e->table[hash].sym != NULL);  hash = (hash + dhash) % e->max)  //Loop until we find an open spot
-		if(strcmp(e->table[hash].sym, k->str) == 0) break; //The strings match, so we overwrite the data
-
+	if((e->table[hash].sym != NULL) && (strcmp(e->table[hash].sym, k->str) != 0)){
+		int dhash = (int) (9 - 2 * (sdbm(k->str) % 5));  //The jump is from 1-9 odds
+		for(; (e->table[hash].sym != NULL);  hash = (hash + dhash) % e->max)  //Loop until we find an open spot
+			if(strcmp(e->table[hash].sym, k->str) == 0) break; //The strings match, so we overwrite the data
+	}
+	
 	if(e->table[hash].sym != NULL){
 		free(e->table[hash].sym);  //Free the old data if we're redefining the symbol
 		lval_del(e->table[hash].v);
@@ -148,10 +150,13 @@ void lenv_put(lenv* e, lval* k, lval* v){
 lval* lenv_get(lenv* e, lval* k) {
 
 	int hash = (int) (djb2(k->str) % e->max);  //The next few lines are the same as lenv_put()
-	int dhash = (int) (9 - 2 * (sdbm(k->str) % 5));
 
-	for(; (e->table[hash].sym != NULL);  hash = (hash + dhash) % e->max)
-		if(strcmp(e->table[hash].sym, k->str) == 0) break;
+	// Check to see if we need to generate a delta-hash first
+	if((e->table[hash].sym != NULL) && (strcmp(e->table[hash].sym, k->str) != 0)) {
+		int dhash = (int) (9 - 2 * (sdbm(k->str) % 5));
+		for(; (e->table[hash].sym != NULL);  hash = (hash + dhash) % e->max)
+			if(strcmp(e->table[hash].sym, k->str) == 0) break;
+	}
 
 	if(e->table[hash].sym != NULL) return lval_copy(e->table[hash].v);
 	if(e->par)

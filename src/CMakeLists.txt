@@ -62,7 +62,7 @@ if(MSVC)
 		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4")
 	endif()
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -pedantic")
 endif()
 
 # Set the standard to C++11
