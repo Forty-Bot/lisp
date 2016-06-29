@@ -106,7 +106,11 @@ lenv* init() {
 	lenv_add_builtins(e);
 	
 	//Load the standard library
-	lval_del(parse((char*) std_lisp, e));
+	lval* result = nparse((char*) std_lisp, (size_t) std_lisp_len, e);
+	if(result->type == LVAL_ERR) {
+		lval_println(result);
+	}
+	lval_del(result);
 		
 	return e;
 
@@ -161,6 +165,24 @@ Ctrl-C or (exit 0) to exit");
 
 }
 
+lval* nparse(char* input, size_t length, lenv* e) {
+	
+	if(input == NULL) return lval_sexp();  //Check for a null input
+
+	mpc_result_t r;
+	if(!(mpc_nparse("<stdin>", input, length, Lisp, &r))){
+		//Failure to parse the input
+		lval* err = lval_err(mpc_err_string(r.error));
+		mpc_err_delete(r.error);
+		return err;
+	}
+	
+	mpc_ast_print(r.output);
+	lval* tree = lval_eval(e, lval_read(r.output));
+	mpc_ast_delete(r.output);
+	return tree;
+}
+
 lval* parse(char* input, lenv* e) {
 	
 	if(input == NULL) return lval_sexp();  //Check for a null input
@@ -173,7 +195,7 @@ lval* parse(char* input, lenv* e) {
 		return err;
 	}
 	
-
+	mpc_ast_print(r.output);
 	lval* tree = lval_eval(e, lval_read(r.output));
 	mpc_ast_delete(r.output);
 	return tree;

@@ -91,6 +91,7 @@ struct lenv{
 #define LVAL_ERR_MAX 512
 
 lval* parse(char*, lenv*);
+lval* nparse(char*, size_t, lenv*);
 lenv* init();
 
 lval* lval_num(long);
