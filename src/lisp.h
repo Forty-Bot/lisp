@@ -160,4 +160,6 @@ lval* lenv_equals(lenv*, lenv*);
 //lval eval_op(char*, lval, lval);
 //lval divide(long, long);
 
+#define UNUSED(x) (void)(x)
+
 #endif

@@ -44,7 +44,7 @@ char* readline(char* prompt) {
 
 }
 
-void add_history(char* unused) {}
+void add_history(char* unused) {UNUSED(unused);}
 
 #else
 
@@ -177,7 +177,7 @@ lval* nparse(char* input, size_t length, lenv* e) {
 		return err;
 	}
 	
-	mpc_ast_print(r.output);
+	//mpc_ast_print(r.output);
 	lval* tree = lval_eval(e, lval_read(r.output));
 	mpc_ast_delete(r.output);
 	return tree;
@@ -195,7 +195,7 @@ lval* parse(char* input, lenv* e) {
 		return err;
 	}
 	
-	mpc_ast_print(r.output);
+	//mpc_ast_print(r.output);
 	lval* tree = lval_eval(e, lval_read(r.output));
 	mpc_ast_delete(r.output);
 	return tree;
@@ -398,6 +398,8 @@ char* ltype_name(enum ltype type){
 
 lval* builtin_op(lenv* e, lval* args, char* op){
 
+	UNUSED(e);
+
 	for(int i = 0; i < args->count; i++)
 		LASSERT_TYPE(args, op, i, args->cell[i]->type, LVAL_NUM);
 
@@ -446,6 +448,8 @@ lval* builtin_op(lenv* e, lval* args, char* op){
 //Return the first element in a list
 lval* builtin_head(lenv* e, lval* args) {
 
+	UNUSED(e);
+	
 	LASSERT_ARGS(args, "head", args->count, 1);
 	LASSERT_TYPE(args, "head", 0, args->cell[0]->type, LVAL_QEXPR);
 	LASSERT_EMPTY(args, "head", args->cell[0]);
@@ -461,6 +465,8 @@ lval* builtin_head(lenv* e, lval* args) {
 //Return the last elements of the list
 lval* builtin_tail(lenv* e, lval* args) {
 
+	UNUSED(e);
+
 	LASSERT_ARGS(args, "tail", args->count, 1);
 	LASSERT_TYPE(args, "tail", 0, args->cell[0]->type, LVAL_QEXPR);
 	LASSERT_EMPTY(args, "tail", args->cell[0]);
@@ -474,6 +480,8 @@ lval* builtin_tail(lenv* e, lval* args) {
 //"Convert" an sexpr to a qexpr
 lval* builtin_list(lenv* e, lval* args) {
 
+	UNUSED(e);
+	
 	args->type = LVAL_QEXPR;
 	return args;
 
@@ -493,6 +501,8 @@ lval* builtin_eval(lenv* e, lval* args) {
 
 lval* builtin_join(lenv* e, lval* args) {
 
+	UNUSED(e);
+	
 	for(int i = 0; i < args->count; i++) {
 			LASSERT_TYPE(args, "join", i, args->cell[i]->type, LVAL_QEXPR);
 	}
@@ -535,6 +545,8 @@ lval* builtin_put(lenv* e, lval* args) {return builtin_var(e, args, VAR_PUT);}
 
 lval* builtin_lambda(lenv* e, lval* args) {
 
+	UNUSED(e);
+	
 	LASSERT_ARGS(args, "\\", args->count, 2);
 	LASSERT_TYPE(args, "\\", 1, args->cell[0]->type, LVAL_QEXPR);
 	LASSERT_TYPE(args, "\\", 2, args->cell[1]->type, LVAL_QEXPR);
@@ -553,6 +565,8 @@ lval* builtin_lambda(lenv* e, lval* args) {
 //Takes >2 args and compares them so that (eq a b c d) is equivlant to (and (eq a b) (eq b c) (eq c d))
 lval* builtin_eq(lenv* e, lval* args) {
 
+	UNUSED(e);
+	
 	LASSERT(args, (args->count < 2), "Function \"eq\" got wrong number of args: got %i, expected at least 2", args->count);
 	lval* current = lval_pop(args, 0);
 	while(args->count) {  //Loop over the arguments and test them
@@ -589,6 +603,8 @@ lval* builtin_if(lenv* e, lval* args) {
 
 lval* builtin_nand(lenv* e, lval* args) {
 
+	UNUSED(e);
+	
 	LASSERT_ARGS(args, "not", args->count, 2);
 	LASSERT_TYPE(args, "not", 1, args->cell[0]->type, LVAL_BOOL);
 	LASSERT_TYPE(args, "not", 2, args->cell[1]->type, LVAL_BOOL);
@@ -619,6 +635,8 @@ char* rel_name(rel func) {
 
 lval* builtin_compare(lenv* e, lval* args, rel func) {
 
+	UNUSED(e);
+	
 	LASSERT_ARGS(args, rel_name(func), args->count, 2);
 	LASSERT_TYPE(args, rel_name(func), 1, args->cell[0]->type, LVAL_NUM);
 	LASSERT_TYPE(args, rel_name(func), 2, args->cell[1]->type, LVAL_NUM);
@@ -631,6 +649,8 @@ lval* builtin_compare(lenv* e, lval* args, rel func) {
 		ADD_REL(REL_LT, <);
 		ADD_REL(REL_LTE, <=);
 		#undef ADD_REL
+		default:
+			result = lval_err("Cannot compare args with function %s", rel_name(func));
 	}
 	lval_del(args);
 	return result;
@@ -689,6 +709,8 @@ lval* builtin_load(lenv* e, lval* args) {
 
 lval* builtin_print(lenv* e, lval* args) {
 
+	UNUSED(e);
+	
 	for(int i = 0; i < args->count; i++) {
 		lval_print(args->cell[i]);
 		putchar(' ');
@@ -702,6 +724,8 @@ lval* builtin_print(lenv* e, lval* args) {
 
 lval* builtin_err(lenv* e, lval* args) {
 
+	UNUSED(e);
+	
 	LASSERT_ARGS(args, "print", args->count, 1);
 	LASSERT_TYPE(args, "print", 1, args->cell[0]->type, LVAL_STR);
 
