@@ -567,7 +567,7 @@ lval* builtin_eq(lenv* e, lval* args) {
 
 	UNUSED(e);
 	
-	LASSERT(args, (args->count < 2), "Function \"eq\" got wrong number of args: got %i, expected at least 2", args->count);
+	LASSERT(args, (args->count < 2), "Function \"==\" got wrong number of args: got %i, expected at least 2", args->count);
 	lval* current = lval_pop(args, 0);
 	while(args->count) {  //Loop over the arguments and test them
 		lval* next = lval_pop(args, 0);
@@ -621,13 +621,13 @@ typedef enum rel {REL_LT, REL_GT, REL_GTE, REL_LTE} rel;
 char* rel_name(rel func) {
 	switch(func) {
 		case(REL_GT):
-			return "gt";
+			return ">";
 		case(REL_GTE):
-			return "gte";
+			return ">=";
 		case(REL_LT):
-			return "lt";
+			return "<";
 		case(REL_LTE):
-			return "lte";
+			return "<=";
 		default:
 			return "Not a comparison function!";
 	}
@@ -787,13 +787,13 @@ void lenv_add_builtins(lenv* e) {
 	ADD_BUILTIN(def, def);
 	ADD_BUILTIN(=, put);
 	ADD_BUILTIN(\\, lambda);
-	ADD_BUILTIN(eq, eq);
+	ADD_BUILTIN(==, eq);
 	ADD_BUILTIN(nand, nand);
 	ADD_BUILTIN(if, if);
-	ADD_BUILTIN(gt, gt);
-	ADD_BUILTIN(gte, gte);
-	ADD_BUILTIN(lt, lt);
-	ADD_BUILTIN(lte, lte);
+	ADD_BUILTIN(>, gt);
+	ADD_BUILTIN(>=, gte);
+	ADD_BUILTIN(<, lt);
+	ADD_BUILTIN(<=, lte);
 	ADD_BUILTIN(load, load);
 	ADD_BUILTIN(print, print);
 	ADD_BUILTIN(exit, exit);
