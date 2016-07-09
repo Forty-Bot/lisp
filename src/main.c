@@ -133,8 +133,11 @@ int main(int argc, char** argv){
 	if(!isatty(fileno(stdin))) {  //Check to see if we are in an interactive shell
 		lval* args = lval_append(lval_sexp(), lval_str("stdin"));
 		lval* err = builtin_load(e, args);
-		if(err->type == LVAL_ERR) lval_println(err);
-		lval_del(err);
+		
+		if(err->type == LVAL_ERR) {
+			lval_println(err);
+			return 1;
+		}
 		return 0;
 	}
 
@@ -146,17 +149,23 @@ There is NO warranty, not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 Ctrl-C or (exit 0) to exit");
 	//printf("%i", sizeof(lval));
 
-	while(1) {
-
-		//Read
-		char* input = readline("lisp> ");
+	// Main loop
+	for(char* input = readline("lisp> "); input != NULL; input = readline("lisp> ")) {
+		// Skip empty lines
+		if(!*input) {
+			continue;
+		}
 		add_history(input);
 
 		lval* tree = parse(input, e);
 		lval_println(tree);
 		lval_del(tree);
+
 		free(input);
 	}
+
+	// Handle ^D correctly
+	puts("");
 
 	lenv_del(e);
 
