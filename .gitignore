@@ -28,4 +28,5 @@ build*
 # Editor files
 *.swp
 *.swo
+.vimrc
 tags
