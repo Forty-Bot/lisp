@@ -23,6 +23,8 @@
 
 #include <stdbool.h>
 
+#include <pthread.h>
+
 #include "mpc.h"
 
 #include "std_lisp.h"
@@ -116,6 +118,53 @@ lenv* init() {
 
 }
 
+// Use nparse() if length != 0, otherwise parse()
+struct thread_args {
+	char* input;
+	size_t length;
+	lenv* e;
+};
+
+void *thread_start(void* args) {
+	struct thread_args* a = args;
+	
+	lval* result;
+	if(a->length > 0) {
+		result = nparse(a->input, a->length, a->e);
+	} else {
+		result = parse(a->input, a->e);
+	}
+	
+	return result;
+}
+
+lval *subthread_parse(char* input, size_t length, lenv* e) {
+	pthread_attr_t attr;
+	int error = pthread_attr_init(&attr);
+	if(error) {
+		return lval_err("Could not init pthread_attr_t: %s", strerror(error));
+	}
+	
+	struct thread_args a;
+	a.input = input;
+	a.length = length;
+	a.e = e;
+
+	pthread_t thread_id;
+	error = pthread_create(&thread_id, &attr, &thread_start, &a);
+	if(error) {
+		return lval_err("Could not create thread: %s", strerror(error));
+	}
+
+	lval* tree;
+	error = pthread_join(thread_id, &tree);
+	if(error) {
+		return lval_err("Could not join with thread: %s", strerror(error));
+	}
+	return tree;
+
+}
+
 int main(int argc, char** argv){
 
 	lenv* e = init();
@@ -157,7 +206,7 @@ Ctrl-C or (exit 0) to exit");
 		}
 		add_history(input);
 
-		lval* tree = parse(input, e);
+		lval* tree = subthread_parse(input, 0, e);
 		lval_println(tree);
 		lval_del(tree);
 

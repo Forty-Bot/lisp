@@ -29,6 +29,12 @@ if(EDITLINE_FOUND)
 	target_link_libraries(${PROJECT_NAME} edit)
 endif(EDITLINE_FOUND)
 
+# Include pthreads
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+target_link_libraries(${PROJECT_NAME} Threads::Threads)
+message(STATUS ${CMAKE_THREAD_LIBS_INIT})
+
 # Fix isatty() includes
 if(WIN32)
   add_definitions(-DWINDOWS)
@@ -65,6 +71,6 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -pedantic")
 endif()
 
-# Set the standard to C++11
+# Set the standard to C11
 set(C_STANDARD_REQUIRED ON)
 set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD 11)
