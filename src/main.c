@@ -139,25 +139,27 @@ void *thread_start(void* args) {
 }
 
 lval *subthread_parse(char* input, size_t length, lenv* e) {
-	pthread_attr_t attr;
-	int error = pthread_attr_init(&attr);
-	if(error) {
-		return lval_err("Could not init pthread_attr_t: %s", strerror(error));
-	}
 	
 	struct thread_args a;
 	a.input = input;
 	a.length = length;
 	a.e = e;
 
+	int error;
 	pthread_t thread_id;
-	error = pthread_create(&thread_id, &attr, &thread_start, &a);
+	error = pthread_create(&thread_id, NULL, &thread_start, &a);
 	if(error) {
 		return lval_err("Could not create thread: %s", strerror(error));
 	}
 
+	pthread_attr_t attr;
+	void* stack;
+	size_t stack_size;
+	pthread_getattr_np(thread_id, &attr);
+	pthread_attr_getstack(&attr, &stack, &stack_size);
+
 	lval* tree;
-	error = pthread_join(thread_id, &tree);
+	error = pthread_join(thread_id, (void**) &tree);
 	if(error) {
 		return lval_err("Could not join with thread: %s", strerror(error));
 	}
