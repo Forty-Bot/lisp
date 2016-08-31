@@ -364,62 +364,73 @@ lval* lval_eval(lenv* e, lval* v) {
 
 lval* lval_call(lenv* e, lval* func, lval* args) {
 
-	if(func->builtin) return func->builtin(e, args);
+	lval *ret;
+	bool err = false;
 
-	int given = args->count;
-	int total = func->formals->count;
+	if(!func->builtin) {
 
-	while(args->count) {
-		if(func->formals->count == 0) {
-			lval_del(args);
-			return lval_err("Function passed too many arguments: got %i, expected %i", given, total);
+		int given = args->count;
+		int total = func->formals->count;
+
+		done = false;
+		while(args->count && !err && !done) {
+			if(func->formals->count == 0) {
+				err = true;
+				ret = lval_err("Function passed too many arguments: got %i, expected %i", given, total);
+			} else {
+				//Define the func's arguments to be what was passed
+				lval* sym = lval_pop(func->formals, 0);
+
+				//Special variable-arguments case
+				if(strcmp(sym->str, "&") == 0) {
+					if(func->formals->count != 1) {  //& must be followed by exactly one symbol
+						err = true;
+						ret = lval_err("Function format invalid: symbol \"&\" not followed by exactly one symbol");
+					}
+
+					lval* nsym = lval_pop(func->formals, 0);
+					lenv_put(func->env, nsym, builtin_list(e, args));  //Bind the last formal to a list of the remaining args
+					lval_del(sym);
+					lval_del(nsym);
+					done = true;
+				} else {
+					lval* val = lval_pop(args, 0);
+					lenv_put(func->env, sym, val);
+					lval_del(val);
+					lval_del(sym);
+				}
+			}
 		}
 
-		//Define the func's arguments to be what was passed
-		lval* sym = lval_pop(func->formals, 0);
+		lval_del(args);
 
-		//Special variable-arguments case
-		if(strcmp(sym->str, "&") == 0) {
-			if(func->formals->count != 1) {  //& must be followed by exactly one symbol
-				lval_del(args);
-				return lval_err("Function format invalid: symbol \"&\" not followed by exactly one symbol");
+		//If we have unpassed variable arguments
+		if(func->formals->count > 0 && strcmp(func->formals->cell[0]->str, "&") == 0 && !err) {
+			if(func->formals->count != 2) { //& has to have a list to bind
+				err = true;
+				ret = lval_err("Function format invalid: symbol \"&\" not followed by exactly one symbol");
+			} else {
+				lval_del(lval_pop(func->formals, 0));  //Pop the &
+
+				lval* sym = lval_pop(func->formals, 0);
+				lval* val = lval_qexpr();
+				lenv_put(func->env, sym, val);
+				lval_del(sym);
+				lval_del(val);
 			}
 
-			lval* nsym = lval_pop(func->formals, 0);
-			lenv_put(func->env, nsym, builtin_list(e, args));  //Bind the last formal to a list of the remaining args
-			lval_del(sym);
-			lval_del(nsym);
-			break;
 		}
 
-		lval* val = lval_pop(args, 0);
-		lenv_put(func->env, sym, val);
-		lval_del(val);
-		lval_del(sym);
+		if(func->formals->count == 0) {  //Evaluate and return
+			func->env->par = e;
+			ret = builtin_eval(func->env, lval_append(lval_sexp(), lval_copy(func->body)));
+		} else  {//Or just return the .5 eval'd func
+			ret = lval_copy(func);
+		}
+	} else {
+			ret = func->builtin(e, args);
 	}
-
-	lval_del(args);
-
-	//If we have unpassed variable arguments
-	if(func->formals->count > 0 && strcmp(func->formals->cell[0]->str, "&") == 0) {
-		if(func->formals->count != 2) //& has to have a list to bind
-			return lval_err("Function format invalid: symbol \"&\" not followed by exactly one symbol");
-
-		lval_del(lval_pop(func->formals, 0));  //Pop the &
-
-		lval* sym = lval_pop(func->formals, 0);
-		lval* val = lval_qexpr();
-		lenv_put(func->env, sym, val);
-		lval_del(sym);
-		lval_del(val);
-
-	}
-
-	if(func->formals->count == 0) {  //Evaluate and return
-		func->env->par = e;
-		return builtin_eval(func->env, lval_append(lval_sexp(), lval_copy(func->body)));
-	} else  //Or just return the .5 eval'd func
-		return lval_copy(func);
+	return ret;
 }
 
 char* ltype_name(enum ltype type){
